@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SnQ Home</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='snq_home_screen_style.css') }}">
+</head>
+<body>
+    <div class="login-container">
+        <h2>SnQ Home</h2>
+        <form method="post">
+            <button type="submit" name="action" value="new_meeting">New SnQ Meeting</button>
+            <button type="submit" name="action" value="join_meeting">Join SnQ Meeting</button>
+        </form>
+    </div>
+</body>
+</html>

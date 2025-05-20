@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SnQ Video Chat</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='index_styles.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h2>SnQ Meeting</h2>
+
+        <div class="video-wrapper">
+            <video id="localVideo" autoplay muted></video>
+            <video id="remoteVideo" autoplay></video>
+        </div>
+
+        <!-- Control Buttons -->
+        <div class="control-buttons">
+            <button id="muteAudioBtn" class="button" onclick="toggleAudio()">🔇 Mute Audio</button>
+            <button id="disableVideoBtn" class="button" onclick="toggleVideo()">📷 Disable Video</button>
+            <button class="button" onclick="startScreenShare()">📺 Share Screen</button>
+            <button id="exitMeetingBtn" class="button" onclick="exitMeeting()">🚪 Exit Meeting</button>
+        </div>
+
+
+        <!-- Chat Section -->
+        <div id="chat">
+            <div id="messages"></div>
+            <div class="chat-input-group">
+                <input id="chatInput" placeholder="Type a message...">
+                <button id="sendBtn">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="{{ url_for('static', filename='main.js') }}"></script>
+
+    <script>
+
+
+        function exitMeeting() {
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+            }
+            // Optionally redirect or reload
+            window.location.href = "/home"; // redirect to home or landing page
+        }
+    </script>
+</body>
+</html>
