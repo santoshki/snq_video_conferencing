@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>New SnQ Meeting</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='snq_home_screen_style.css') }}">
+</head>
+<body>
+    <div class="login-container">
+        <h2>New SnQ Meeting</h2>
+        <form method="post" action="{{ url_for('meeting_room', room_id=room_id) }}">
+            <label for="room_id">Meeting Room ID:</label>
+            <input type="text" id="room_id" name="room_id" value="{{ room_id }}" readonly>
+            <button type="submit">Start Meeting</button>
+        </form>
+    </div>
+</body>
+</html>
+
