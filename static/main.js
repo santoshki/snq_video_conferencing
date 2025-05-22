@@ -13,104 +13,145 @@ const messages = document.getElementById("messages");
 
 // Join the room when DOM is ready
 document.addEventListener("DOMContentLoaded", () => {
-    socket.emit("join", { room: roomId });
+ socket.emit("join", { room: roomId });
 
-    // Request access to webcam and microphone
-    navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-        .then(stream => {
-            localVideo.srcObject = stream;
-            window.localStream = stream;
+ // Request access to webcam and microphone
+ navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+ .then(stream => {
+ // Disable the video track immediately
+ const videoTrack = stream.getVideoTracks()[0];
+ if (videoTrack) {
+ videoTrack.enabled = false;
+ console.log("Video track initialized but disabled by default.");
+ }
 
-            // Debug logs to confirm stream assignment
-            console.log("Media stream initialized:", stream);
-            console.log("Audio tracks:", stream.getAudioTracks());
-            console.log("Video tracks:", stream.getVideoTracks());
-        })
-        .catch(error => {
-            console.error("Error accessing media devices:", error);
-            alert("Please allow access to camera and microphone.");
-        });
+ localVideo.srcObject = stream;
+ window.localStream = stream;
+
+ console.log("Media stream initialized:", stream);
+ console.log("Audio tracks:", stream.getAudioTracks());
+ console.log("Video tracks:", stream.getVideoTracks());
+ })
+ .catch(error => {
+ console.error("Error accessing media devices:", error);
+ alert("Please allow access to camera and microphone.");
+ });
 });
 
 // Handle screen sharing
 function startScreenShare() {
-    navigator.mediaDevices.getDisplayMedia({ video: true })
-        .then(screenStream => {
-            localVideo.srcObject = screenStream;
-            window.screenStream = screenStream;
-        })
-        .catch(err => {
-            console.error("Screen share error:", err);
-            alert("Screen share permission denied.");
-        });
+ navigator.mediaDevices.getDisplayMedia({ video: true })
+ .then(screenStream => {
+ localVideo.srcObject = screenStream;
+ window.screenStream = screenStream;
+ })
+ .catch(err => {
+ console.error("Screen share error:", err);
+ alert("Screen share permission denied.");
+ });
 }
 
 // Handle sending chat message
 sendBtn.addEventListener("click", () => {
-    const message = chatInput.value.trim();
-    if (message) {
-        socket.emit("message", {
-            room: roomId,
-            text: `You: ${message}`
-        });
+ const message = chatInput.value.trim();
+ if (message) {
+ socket.emit("message", {
+ room: roomId,
+ text: `You: ${message}`
+ });
 
-        // Also display the message locally
-        appendMessage(`You: ${message}`);
-        chatInput.value = "";
-    }
+ // Also display the message locally
+ appendMessage(`You: ${message}`);
+ chatInput.value = "";
+ }
 });
 
 // Receive messages from server
 socket.on("message", (data) => {
-    if (data.text) {
-        appendMessage(data.text);
-    }
+ if (data.text) {
+ appendMessage(data.text);
+ }
 });
 
 // Append message to chat UI
 function appendMessage(msg) {
-    const div = document.createElement("div");
-    div.textContent = msg;
-    messages.appendChild(div);
-    messages.scrollTop = messages.scrollHeight;
+ const div = document.createElement("div");
+ div.textContent = msg;
+ messages.appendChild(div);
+ messages.scrollTop = messages.scrollHeight;
 }
 
 // Toggle Audio On/Off
 function toggleAudio() {
-    const audioTrack = window.localStream?.getAudioTracks()[0];
-    if (audioTrack) {
-        audioTrack.enabled = !audioTrack.enabled;
-        const btn = document.getElementById('muteAudioBtn');
-        if (btn) {
-            btn.innerText = audioTrack.enabled ? "🔇 Mute Audio" : "🔈 Unmute Audio";
-        }
-        console.log("Audio toggled:", audioTrack.enabled);
-    } else {
-        console.warn("No audio track found.");
-    }
+ const audioTrack = window.localStream?.getAudioTracks()[0];
+ if (audioTrack) {
+ audioTrack.enabled = !audioTrack.enabled;
+ const btn = document.getElementById('muteAudioBtn');
+ if (btn) {
+ btn.innerText = audioTrack.enabled ? " Mute Audio" : " Unmute Audio";
+ }
+ console.log("Audio toggled:", audioTrack.enabled);
+ } else {
+ console.warn("No audio track found.");
+ }
 }
 
-// Toggle Video On/Off
 function toggleVideo() {
-    console.log("toggleVideo called");
-    const videoTrack = window.localStream?.getVideoTracks()[0];
-    console.log("Video track:", videoTrack);
+ const videoTrack = window.localStream?.getVideoTracks()[0];
+ const btn = document.getElementById('disableVideoBtn');
+ const overlay = document.getElementById('nameOverlay');
 
-    if (videoTrack) {
-        videoTrack.enabled = !videoTrack.enabled;
-        const btn = document.getElementById('disableVideoBtn');
-        if (btn) {
-            btn.innerText = videoTrack.enabled ? "📷 Disable Video" : "📸 Enable Video";
-        }
-        console.log("Video toggled:", videoTrack.enabled);
-    } else {
-        console.warn("No video track found.");
-    }
+ if (videoTrack) {
+ videoTrack.enabled = !videoTrack.enabled;
+ if (btn) {
+ btn.innerText = videoTrack.enabled ? " Disable Video" : " Enable Video";
+ }
+
+ // Show name overlay if video is disabled
+ if (overlay) {
+ overlay.style.display = videoTrack.enabled ? "none" : "block";
+ }
+ console.log("Video toggled:", videoTrack.enabled);
+ } else {
+ console.warn("No video track found.");
+ }
 }
+
+navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+ .then(stream => {
+ const videoTrack = stream.getVideoTracks()[0];
+ if (videoTrack) {
+ videoTrack.enabled = false;
+ const overlay = document.getElementById('nameOverlay');
+ if (overlay) overlay.style.display = "block";
+ }
+
+ localVideo.srcObject = stream;
+ window.localStream = stream;
+ })
+
 
 function exitMeeting() {
-    if (localStream) {
-        localStream.getTracks().forEach(track => track.stop());
-    }
-    window.location.href = "/home";
+ if (localStream) {
+ localStream.getTracks().forEach(track => track.stop());
+ }
+ window.location.href = "/home";
 }
+
+let seconds = 0;
+let minutes = 0;
+
+function updateTimer() {
+ seconds++;
+ if (seconds >= 60) {
+ seconds = 0;
+ minutes++;
+ }
+
+ const formattedMinutes = String(minutes).padStart(2, '0');
+ const formattedSeconds = String(seconds).padStart(2, '0');
+ document.getElementById("meetingTimer").textContent = `Meeting Duration: ${formattedMinutes}:${formattedSeconds}`;
+}
+
+
+setInterval(updateTimer, 1000);

@@ -1,9 +1,11 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, session
 from flask_socketio import SocketIO, emit, join_room
 import uuid
 
 app = Flask(__name__)
 socketio = SocketIO(app)
+
+app.secret_key = 'your_secret_key'
 
 
 @app.route("/snq_login", methods=["GET", "POST"])
@@ -12,6 +14,7 @@ def login():
         username = request.form["username"]
         password = request.form["password"]
         if username == "admin" and password == "password":
+            session["user"] = username  # store in session
             return redirect(url_for("home"))
         else:
             return "Invalid credentials, try again."
@@ -20,24 +23,32 @@ def login():
 
 @app.route("/home", methods=["GET", "POST"])
 def home():
+    username = session.get("user")
     if request.method == "POST":
         action = request.form.get("action")
         if action == "new_meeting":
             return redirect(url_for("new_meeting"))
         elif action == "join_meeting":
             return "Join Meeting feature not implemented yet."
-    return render_template("snq_home.html")
+    return render_template("snq_home.html", username=username)
 
 
 @app.route('/new_meeting')
 def new_meeting():
     room_id = str(uuid.uuid4())
-    return redirect(url_for('meeting_room', room_id=room_id))
+    return redirect(url_for('start_meeting', room_id=room_id))
 
 
-@app.route('/meeting/<room_id>')
+# ✅ Corrected: include <room_id> in the route URL
+@app.route('/start_meeting/<room_id>', methods=["GET", "POST"])
+def start_meeting(room_id):
+    return render_template('new_meeting.html', room_id=room_id)
+
+
+@app.route('/meeting/<room_id>', methods=["GET", "POST"])
 def meeting_room(room_id):
-    return render_template('room.html', room_id=room_id)
+    username = session.get("user", "Guest")  # fallback if not set
+    return render_template('room.html', room_id=room_id, username=username)
 
 
 @socketio.on('message')
@@ -54,5 +65,4 @@ def handle_join(data):
 
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True, allow_unsafe_werkzeug=True)
-
+    socketio.run(app, debug=True, use_reloader=False, allow_unsafe_werkzeug=True)

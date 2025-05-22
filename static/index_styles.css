@@ -30,19 +30,71 @@ h2 {
     color: #2c3e50;
 }
 
-/* Video section */
-.video-wrapper {
-    display: flex;
-    justify-content: space-around;
-    flex-wrap: wrap;
-    margin-bottom: 20px;
+/* Timer */
+.timer {
+    font-size: 16px;
+    font-weight: bold;
+    margin-bottom: 10px;
+    color: #333;
 }
 
+/* Video Wrapper */
+.video-wrapper {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 20px;
+    margin-bottom: 10px;
+}
+
+/* Individual video box */
+.video-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    margin: 10px;
+}
+
+/* Video element */
 video {
-    width: 35%;
+    width: 300px;
+    max-width: 100%;
     border-radius: 10px;
     border: 2px solid #ddd;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Label below each video */
+.video-label {
+    margin-top: 8px;
+    font-size: 16px;
+    font-weight: 500;
+    color: #2c3e50;
+}
+
+/* Overlay when video is off */
+.name-overlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 20px;
+    color: white;
+    background: rgba(0, 0, 0, 0.6);
+    padding: 6px 12px;
+    border-radius: 6px;
+    display: none; /* hidden by default */
+    pointer-events: none;
+}
+
+/* Control Buttons */
+.control-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 15px;
+    margin: 20px 0;
 }
 
 /* Button base class */
@@ -65,15 +117,6 @@ video {
 .button:active {
     background-color: #004085;
     transform: scale(1);
-}
-
-/* Control buttons layout */
-.control-buttons {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 15px;
-    margin: 20px 0;
 }
 
 /* Chat section */
@@ -120,6 +163,14 @@ video {
     background-color: #1e7e34;
 }
 
+/* Username display under heading (optional) */
+.username-display {
+    text-align: center;
+    margin-top: 10px;
+    font-size: 16px;
+    color: #333;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     .video-wrapper {
@@ -129,7 +180,7 @@ video {
 
     video {
         width: 90%;
-        margin-bottom: 15px;
+        margin-bottom: 10px;
     }
 
     .button {

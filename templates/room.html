@@ -10,21 +10,27 @@
     <div class="container">
         <h2>SnQ Meeting</h2>
 
+        <div id="meetingTimer" class="timer">Meeting Duration: 00:00</div>
+
         <div class="video-wrapper">
-            <video id="localVideo" autoplay muted></video>
-            <video id="remoteVideo" autoplay></video>
+            <div class="video-container">
+                <video id="localVideo" autoplay muted></video>
+                <div class="video-label">{{ username }}</div>
+            </div>
+
+            <div class="video-container">
+                <video id="remoteVideo" autoplay></video>
+                <div class="video-label">Remote User</div> <!-- Optional -->
+            </div>
         </div>
 
-        <!-- Control Buttons -->
         <div class="control-buttons">
             <button id="muteAudioBtn" class="button" onclick="toggleAudio()">🔇 Mute Audio</button>
-            <button id="disableVideoBtn" class="button" onclick="toggleVideo()">📷 Disable Video</button>
+            <button id="disableVideoBtn" class="button" onclick="toggleVideo()">📷 Enable Video</button>
             <button class="button" onclick="startScreenShare()">📺 Share Screen</button>
             <button id="exitMeetingBtn" class="button" onclick="exitMeeting()">🚪 Exit Meeting</button>
         </div>
 
-
-        <!-- Chat Section -->
         <div id="chat">
             <div id="messages"></div>
             <div class="chat-input-group">
@@ -39,13 +45,11 @@
 
     <script>
 
-
         function exitMeeting() {
             if (localStream) {
                 localStream.getTracks().forEach(track => track.stop());
             }
-            // Optionally redirect or reload
-            window.location.href = "/home"; // redirect to home or landing page
+            window.location.href = "/home";
         }
     </script>
 </body>
