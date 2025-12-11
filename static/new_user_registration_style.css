@@ -1,0 +1,69 @@
+/* General body and layout */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f0f2f5;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+}
+
+/* Registration container (same structure as login container) */
+.registration-container {
+    background-color: #fff;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    width: 320px; /* match your login container width */
+    text-align: center;
+}
+
+/* Title */
+.registration-container h2 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    font-size: 22px;
+}
+
+/* Input fields */
+.registration-container input[type="text"],
+.registration-container input[type="email"],
+.registration-container input[type="password"] {
+    width: 100%;
+    padding: 10px;
+    margin: 10px 0;
+    box-sizing: border-box;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+/* Checkbox label */
+.registration-container label {
+    font-size: 14px;
+    display: block;
+    text-align: left;
+    margin-top: 10px;
+}
+
+/* Checkbox */
+.registration-container input[type="checkbox"] {
+    margin-right: 6px;
+}
+
+/* Submit button */
+.registration-container button {
+    padding: 10px 20px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    cursor: pointer;
+    width: 100%;
+    border-radius: 4px;
+    margin-top: 20px;
+    font-size: 16px;
+}
+
+.registration-container button:hover {
+    background-color: #45a049;
+}
