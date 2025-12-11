@@ -8,12 +8,37 @@
 <body>
     <div class="login-container">
         <h2>New SnQ Meeting</h2>
-        <form method="post" action="{{ url_for('meeting_room', room_id=room_id) }}">
+        <form method="post" action="{{ url_for('start_meeting', room_id=room_id) }}">
+
             <label for="room_id">Meeting Room ID:</label>
             <input type="text" id="room_id" name="room_id" value="{{ room_id }}" readonly>
-            <button type="submit">Start Meeting</button>
+
+            <label for="meeting_subject_line">Meeting Subject</label>
+            <!-- Add the name attribute here -->
+            <input type="text" id="meeting_subject_line" name="meeting_subject_line" placeholder="Meeting subject line" required>
+
+            <!-- Add ID and disable button by default -->
+            <button type="submit" id="start_meeting_btn" disabled>Start Meeting</button>
         </form>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const subjectInput = document.getElementById('meeting_subject_line');
+            const startBtn = document.getElementById('start_meeting_btn');
+
+            // Function to update button state
+            function updateButtonState() {
+                startBtn.disabled = subjectInput.value.trim() === '';
+            }
+
+            // Run once on page load
+            updateButtonState();
+
+            // Run on every input change
+            subjectInput.addEventListener('input', updateButtonState);
+        });
+    </script>
+
 </body>
 </html>
-

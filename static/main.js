@@ -1,3 +1,5 @@
+// Assuming your HTML template includes:// <script>const localUsername = "{{ username }}";</script>
+
 // Initialize Socket.IO
 const socket = io();
 
@@ -7,36 +9,188 @@ const roomId = window.location.pathname.split("/")[2];
 // DOM references
 const localVideo = document.getElementById("localVideo");
 const remoteVideo = document.getElementById("remoteVideo");
+const localUsernamePlaceholder = document.getElementById("localUsername");
+const remoteUsernamePlaceholder = document.getElementById("remoteUsername");
 const chatInput = document.getElementById("chatInput");
 const sendBtn = document.getElementById("sendBtn");
 const messages = document.getElementById("messages");
+const muteAudioBtn = document.getElementById("muteAudioBtn");
+const disableVideoBtn = document.getElementById("disableVideoBtn");
+
+let localStream = null; // store media stream here
+let videoEnabled = false;
+let audioEnabled = true;
 
 // Join the room when DOM is ready
 document.addEventListener("DOMContentLoaded", () => {
- socket.emit("join", { room: roomId });
+ socket.emit("join", { room: roomId, username: localUsername });
 
- // Request access to webcam and microphone
- navigator.mediaDevices.getUserMedia({ video: true, audio: true })
- .then(stream => {
- // Disable the video track immediately
- const videoTrack = stream.getVideoTracks()[0];
- if (videoTrack) {
- videoTrack.enabled = false;
- console.log("Video track initialized but disabled by default.");
+ // Show username placeholder initially, hide video
+ localVideo.style.display = "none";
+ if (localUsernamePlaceholder) {
+ localUsernamePlaceholder.textContent = localUsername;
+ localUsernamePlaceholder.style.display = "flex";
+ }
+});
+
+// Toggle Audio On/Off
+function toggleAudio() {
+ if (!localStream) {
+ alert("Enable video (and allow camera access) first.");
+ return;
  }
 
- localVideo.srcObject = stream;
- window.localStream = stream;
+ const audioTrack = localStream.getAudioTracks()[0];
+ if (audioTrack) {
+ audioTrack.enabled = !audioTrack.enabled;
+ audioEnabled = audioTrack.enabled;
+ if (muteAudioBtn) {
+ muteAudioBtn.innerText = audioTrack.enabled ? " Mute Audio" : " Unmute Audio";
+ }
+ console.log("Audio toggled:", audioTrack.enabled);
+ } else {
+ console.warn("No audio track found.");
+ }
+}
 
- console.log("Media stream initialized:", stream);
- console.log("Audio tracks:", stream.getAudioTracks());
- console.log("Video tracks:", stream.getVideoTracks());
- })
- .catch(error => {
+// Toggle Video On/Off with camera fully stopped when off
+async function toggleVideo() {
+ if (!localStream) {
+ // Request permission and get media stream with audio + video
+ try {
+ localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+ window.localStream = localStream;
+
+ // Set initial audio/video track states
+ const audioTrack = localStream.getAudioTracks()[0];
+ if (audioTrack) {
+ audioTrack.enabled = true;
+ audioEnabled = true;
+ if (muteAudioBtn) {
+ muteAudioBtn.innerText = " Mute Audio";
+ }
+ }
+
+ const videoTrack = localStream.getVideoTracks()[0];
+ if (videoTrack) {
+ videoTrack.enabled = true;
+ videoEnabled = true;
+ }
+
+ localVideo.srcObject = localStream;
+
+ // Update UI for enabled video
+ localVideo.style.display = "block";
+ if (localUsernamePlaceholder) localUsernamePlaceholder.style.display = "none";
+
+ if (disableVideoBtn) {
+ disableVideoBtn.innerText = " Disable Video";
+ }
+
+ // Notify others
+ socket.emit("video-toggle", {
+ room: roomId,
+ enabled: true,
+ username: localUsername
+ });
+
+ console.log("Media stream initialized on video enable.");
+ } catch (error) {
  console.error("Error accessing media devices:", error);
  alert("Please allow access to camera and microphone.");
+ return;
+ }
+ } else {
+ const videoTrack = localStream.getVideoTracks()[0];
+
+ if (videoTrack) {
+ if (videoEnabled) {
+ // Stop and remove the video track to fully disable camera
+ videoTrack.stop();
+ localStream.removeTrack(videoTrack);
+
+ videoEnabled = false;
+
+ localVideo.style.display = "none";
+ if (localUsernamePlaceholder) localUsernamePlaceholder.style.display = "flex";
+
+ if (disableVideoBtn) {
+ disableVideoBtn.innerText = " Enable Video";
+ }
+
+ // Notify others
+ socket.emit("video-toggle", {
+ room: roomId,
+ enabled: false,
+ username: localUsername
  });
-});
+
+ console.log("Video track stopped and disabled.");
+ } else {
+ // Enable video: request new video track
+ try {
+ const newStream = await navigator.mediaDevices.getUserMedia({ video: true });
+ const newVideoTrack = newStream.getVideoTracks()[0];
+ if (newVideoTrack) {
+ localStream.addTrack(newVideoTrack);
+ newVideoTrack.enabled = true;
+ videoEnabled = true;
+
+ localVideo.srcObject = localStream;
+ localVideo.style.display = "block";
+ if (localUsernamePlaceholder) localUsernamePlaceholder.style.display = "none";
+
+ if (disableVideoBtn) {
+ disableVideoBtn.innerText = " Disable Video";
+ }
+
+ // Notify others
+ socket.emit("video-toggle", {
+ room: roomId,
+ enabled: true,
+ username: localUsername
+ });
+
+ console.log("Video track added and enabled.");
+ }
+ } catch (err) {
+ console.error("Error enabling video:", err);
+ alert("Unable to enable camera.");
+ }
+ }
+ } else {
+ // No video track present at all — request it
+ try {
+ const newStream = await navigator.mediaDevices.getUserMedia({ video: true });
+ const newVideoTrack = newStream.getVideoTracks()[0];
+ if (newVideoTrack) {
+ localStream.addTrack(newVideoTrack);
+ newVideoTrack.enabled = true;
+ videoEnabled = true;
+
+ localVideo.srcObject = localStream;
+ localVideo.style.display = "block";
+ if (localUsernamePlaceholder) localUsernamePlaceholder.style.display = "none";
+
+ if (disableVideoBtn) {
+ disableVideoBtn.innerText = " Disable Video";
+ }
+
+ socket.emit("video-toggle", {
+ room: roomId,
+ enabled: true,
+ username: localUsername
+ });
+
+ console.log("Video track added and enabled.");
+ }
+ } catch (err) {
+ console.error("Error enabling video:", err);
+ alert("Unable to enable camera.");
+ }
+ }
+ }
+}
 
 // Handle screen sharing
 function startScreenShare() {
@@ -57,11 +211,11 @@ sendBtn.addEventListener("click", () => {
  if (message) {
  socket.emit("message", {
  room: roomId,
- text: `You: ${message}`
+ text: `${localUsername}: ${message}`
  });
 
  // Also display the message locally
- appendMessage(`You: ${message}`);
+ appendMessage(`${localUsername}: ${message}`);
  chatInput.value = "";
  }
 });
@@ -81,63 +235,32 @@ function appendMessage(msg) {
  messages.scrollTop = messages.scrollHeight;
 }
 
-// Toggle Audio On/Off
-function toggleAudio() {
- const audioTrack = window.localStream?.getAudioTracks()[0];
- if (audioTrack) {
- audioTrack.enabled = !audioTrack.enabled;
- const btn = document.getElementById('muteAudioBtn');
- if (btn) {
- btn.innerText = audioTrack.enabled ? " Mute Audio" : " Unmute Audio";
- }
- console.log("Audio toggled:", audioTrack.enabled);
+// Listen for remote user's video toggle events
+socket.on("video-toggle", (data) => {
+ const { enabled, username } = data;
+ if (!remoteVideo || !remoteUsernamePlaceholder) return;
+
+ if (enabled) {
+ remoteVideo.style.display = "block";
+ remoteUsernamePlaceholder.style.display = "none";
  } else {
- console.warn("No audio track found.");
- }
-}
-
-function toggleVideo() {
- const videoTrack = window.localStream?.getVideoTracks()[0];
- const btn = document.getElementById('disableVideoBtn');
- const overlay = document.getElementById('nameOverlay');
-
- if (videoTrack) {
- videoTrack.enabled = !videoTrack.enabled;
- if (btn) {
- btn.innerText = videoTrack.enabled ? " Disable Video" : " Enable Video";
+ remoteVideo.style.display = "none";
+ remoteUsernamePlaceholder.style.display = "flex";
+ remoteUsernamePlaceholder.textContent = username;
  }
 
- // Show name overlay if video is disabled
- if (overlay) {
- overlay.style.display = videoTrack.enabled ? "none" : "block";
- }
- console.log("Video toggled:", videoTrack.enabled);
- } else {
- console.warn("No video track found.");
- }
-}
+ console.log(`Remote user ${username} video ${enabled ? "enabled" : "disabled"}`);
+});
 
-navigator.mediaDevices.getUserMedia({ video: true, audio: true })
- .then(stream => {
- const videoTrack = stream.getVideoTracks()[0];
- if (videoTrack) {
- videoTrack.enabled = false;
- const overlay = document.getElementById('nameOverlay');
- if (overlay) overlay.style.display = "block";
- }
-
- localVideo.srcObject = stream;
- window.localStream = stream;
- })
-
-
+// Exit meeting
 function exitMeeting() {
- if (localStream) {
- localStream.getTracks().forEach(track => track.stop());
+ if (window.localStream) {
+ window.localStream.getTracks().forEach(track => track.stop());
  }
  window.location.href = "/home";
 }
 
+// Meeting timer
 let seconds = 0;
 let minutes = 0;
 
@@ -152,6 +275,5 @@ function updateTimer() {
  const formattedSeconds = String(seconds).padStart(2, '0');
  document.getElementById("meetingTimer").textContent = `Meeting Duration: ${formattedMinutes}:${formattedSeconds}`;
 }
-
 
 setInterval(updateTimer, 1000);

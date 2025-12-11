@@ -1,26 +1,26 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8" />
     <title>SnQ Video Chat</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="{{ url_for('static', filename='index_styles.css') }}">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='index_styles.css') }}" />
 </head>
 <body>
     <div class="container">
-        <h2>SnQ Meeting</h2>
+        <h2>{{ meeting_subject }}</h2>
 
         <div id="meetingTimer" class="timer">Meeting Duration: 00:00</div>
 
         <div class="video-wrapper">
-            <div class="video-container">
-                <video id="localVideo" autoplay muted></video>
-                <div class="video-label">{{ username }}</div>
+            <div class="video-container" id="localVideoContainer">
+                <video id="localVideo" autoplay muted playsinline></video>
+                <div id="localUsername" class="username-placeholder">{{ username }}</div>
             </div>
 
-            <div class="video-container">
-                <video id="remoteVideo" autoplay></video>
-                <div class="video-label">Remote User</div> <!-- Optional -->
+            <div class="video-container" id="remoteVideoContainer">
+                <video id="remoteVideo" autoplay playsinline></video>
+                <div id="remoteUsername" class="username-placeholder">Remote User</div>
             </div>
         </div>
 
@@ -34,23 +34,18 @@
         <div id="chat">
             <div id="messages"></div>
             <div class="chat-input-group">
-                <input id="chatInput" placeholder="Type a message...">
+                <input id="chatInput" placeholder="Type a message..." />
                 <button id="sendBtn">Send</button>
             </div>
         </div>
     </div>
 
+    <script>
+        // Expose username globally for main.js
+        const localUsername = "{{ username|e }}";
+    </script>
+
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <script src="{{ url_for('static', filename='main.js') }}"></script>
-
-    <script>
-
-        function exitMeeting() {
-            if (localStream) {
-                localStream.getTracks().forEach(track => track.stop());
-            }
-            window.location.href = "/home";
-        }
-    </script>
 </body>
 </html>
