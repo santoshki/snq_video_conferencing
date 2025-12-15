@@ -99,6 +99,10 @@ def meeting_room(room_id):
     return render_template('room.html', room_id=room_id, username=username, meeting_subject=meeting_subject)
 
 
+
+@app.route('/logout', methods=["GET", "POST"])
+def logout():
+    return redirect(url_for("login"))
 # ------------------ WebSocket Events ------------------
 
 @socketio.on('message')
