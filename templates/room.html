@@ -57,34 +57,5 @@
     <!-- Core App Logic -->
     <script src="{{ url_for('static', filename='main.js') }}"></script>
 
-    <!-- Auto-Join Room -->
-    <script>
-        const socket = io();
-
-        socket.emit("join", {
-            room: ROOM_ID,
-            username: localUsername
-        });
-
-        socket.on("message", (data) => {
-            if (data.type === "chat") {
-                const messagesDiv = document.getElementById("messages");
-                const msg = document.createElement("div");
-                msg.textContent = data.text;
-                messagesDiv.appendChild(msg);
-                messagesDiv.scrollTop = messagesDiv.scrollHeight;
-            }
-        });
-
-        socket.on("user-joined", (data) => {
-            console.log("User joined:", data.socketId);
-            // main.js should start WebRTC offer here
-        });
-
-        socket.on("user-disconnected", (data) => {
-            console.log("User disconnected:", data.socketId);
-        });
-    </script>
-
 </body>
 </html>
