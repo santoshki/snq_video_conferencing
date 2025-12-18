@@ -19,9 +19,25 @@
     <div class="login-container">
         <h2>SnQ Home</h2>
         <p class="welcome-msg">Welcome, {{ username }}!</p>
+
         <form method="post">
-            <button type="submit" name="action" value="new_meeting">New SnQ Meeting</button>
-            <button type="submit" name="action" value="join_meeting">Join SnQ Meeting</button>
+            <!-- Join Meeting Input -->
+            <div class="form-group">
+                <input
+                    type="text"
+                    name="meeting_id"
+                    placeholder="Enter Meeting ID"
+                    class="meeting-input"
+                >
+            </div>
+
+            <button type="submit" name="action" value="new_meeting">
+                New SnQ Meeting
+            </button>
+
+            <button type="submit" name="action" value="join_meeting">
+                Join SnQ Meeting
+            </button>
         </form>
     </div>
 

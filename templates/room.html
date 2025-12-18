@@ -10,8 +10,10 @@
     <div class="container">
         <h2>{{ meeting_subject }}</h2>
 
+        <!-- Meeting Timer -->
         <div id="meetingTimer" class="timer">Meeting Duration: 00:00</div>
 
+        <!-- Video Area -->
         <div class="video-wrapper">
             <div class="video-container" id="localVideoContainer">
                 <video id="localVideo" autoplay muted playsinline></video>
@@ -24,6 +26,7 @@
             </div>
         </div>
 
+        <!-- Controls -->
         <div class="control-buttons">
             <button id="muteAudioBtn" class="button" onclick="toggleAudio()">🔇 Mute Audio</button>
             <button id="disableVideoBtn" class="button" onclick="toggleVideo()">📷 Enable Video</button>
@@ -31,6 +34,7 @@
             <button id="exitMeetingBtn" class="button" onclick="exitMeeting()">🚪 Exit Meeting</button>
         </div>
 
+        <!-- Chat -->
         <div id="chat">
             <div id="messages"></div>
             <div class="chat-input-group">
@@ -40,12 +44,47 @@
         </div>
     </div>
 
+    <!-- Expose values to JavaScript -->
     <script>
-        // Expose username globally for main.js
+        const ROOM_ID = "{{ room_id }}";
         const localUsername = "{{ username|e }}";
+        const meetingSubject = "{{ meeting_subject|e }}";
     </script>
 
+    <!-- Socket.IO -->
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+
+    <!-- Core App Logic -->
     <script src="{{ url_for('static', filename='main.js') }}"></script>
+
+    <!-- Auto-Join Room -->
+    <script>
+        const socket = io();
+
+        socket.emit("join", {
+            room: ROOM_ID,
+            username: localUsername
+        });
+
+        socket.on("message", (data) => {
+            if (data.type === "chat") {
+                const messagesDiv = document.getElementById("messages");
+                const msg = document.createElement("div");
+                msg.textContent = data.text;
+                messagesDiv.appendChild(msg);
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            }
+        });
+
+        socket.on("user-joined", (data) => {
+            console.log("User joined:", data.socketId);
+            // main.js should start WebRTC offer here
+        });
+
+        socket.on("user-disconnected", (data) => {
+            console.log("User disconnected:", data.socketId);
+        });
+    </script>
+
 </body>
 </html>

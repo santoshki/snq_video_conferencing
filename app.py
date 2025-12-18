@@ -10,8 +10,8 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 # Keep track of which room each socket is in
 users = {}
 
-
 # ------------------ Routes ------------------
+
 
 @app.route("/create_account", methods=["GET", "POST"])
 def create_account():
@@ -50,6 +50,9 @@ def login():
         if username == "admin" and password == "password":
             session['username'] = username
             return redirect(url_for("home"))
+        elif username == "admin2" and password == "password2":
+            session['username'] = username
+            return redirect(url_for("home"))
         else:
             return "Invalid credentials, try again."
     return render_template("login.html")
@@ -58,12 +61,26 @@ def login():
 @app.route("/home", methods=["GET", "POST"])
 def home():
     username = session.get('username', 'Guest')
+
     if request.method == "POST":
         action = request.form.get("action")
+
         if action == "new_meeting":
             return redirect(url_for("new_meeting"))
+
         elif action == "join_meeting":
-            return "Join Meeting feature not implemented yet."
+            meeting_input = request.form.get("meeting_id", "").strip()
+
+            if not meeting_input:
+                return "Meeting ID cannot be empty", 400
+
+            if "/meeting/" in meeting_input:
+                room_id = meeting_input.split("/meeting/")[-1]
+            else:
+                room_id = meeting_input
+
+            return redirect(url_for("meeting_room", room_id=room_id))
+
     return render_template("snq_home.html", username=username)
 
 
@@ -99,11 +116,13 @@ def meeting_room(room_id):
     return render_template('room.html', room_id=room_id, username=username, meeting_subject=meeting_subject)
 
 
-
-@app.route('/logout', methods=["GET", "POST"])
+@app.route("/logout", methods=["POST", "GET"])
 def logout():
+    session.clear()  # Clears all session data
     return redirect(url_for("login"))
+
 # ------------------ WebSocket Events ------------------
+
 
 @socketio.on('message')
 def handle_message(data):
