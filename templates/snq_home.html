@@ -6,13 +6,29 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='snq_home_screen_style.css') }}">
 </head>
 <body>
-    <div class="login-container">
-        <h2>SnQ Home</h2>
-        <p>Welcome, {{ username }}!</p>
-        <form method="post">
-            <button type="submit" name="action" value="new_meeting">New SnQ Meeting</button>
-            <button type="submit" name="action" value="join_meeting">Join SnQ Meeting</button>
-        </form>
-    </div>
+
+    <!-- TOP BAR -->
+    <header class="top-bar">
+        <div class="top-bar-title">SnQ Video Conferencing</div>
+        <a href="{{ url_for('logout') }}" class="logout-button">Logout</a>
+    </header>
+
+    <!-- MAIN CONTENT -->
+    <main class="page-content">
+        <div class="login-container">
+            <h2>SnQ Home</h2>
+            <p>Welcome, {{ username }}!</p>
+
+            <form method="post">
+                <button type="submit" name="action" value="new_meeting">
+                    New SnQ Meeting
+                </button>
+                <button type="submit" name="action" value="join_meeting">
+                    Join SnQ Meeting
+                </button>
+            </form>
+        </div>
+    </main>
+
 </body>
 </html>

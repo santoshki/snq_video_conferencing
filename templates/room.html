@@ -6,51 +6,225 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="{{ url_for('static', filename='index_styles.css') }}">
 </head>
+
 <body>
-    <div class="container">
-        <h2>SnQ Meeting</h2>
+<div class="container">
+    <h2>SnQ Meeting</h2>
 
-        <div id="meetingTimer" class="timer">Meeting Duration: 00:00</div>
+    <div id="meetingTimer" class="timer">Meeting Duration: 00:00</div>
 
-        <div class="video-wrapper">
-            <div class="video-container">
-                <video id="localVideo" autoplay muted></video>
-                <div class="video-label">{{ username }}</div>
-            </div>
-
-            <div class="video-container">
-                <video id="remoteVideo" autoplay></video>
-                <div class="video-label">Remote User</div> <!-- Optional -->
-            </div>
+    <div class="video-wrapper">
+        <div class="video-container">
+            <video id="localVideo" autoplay muted playsinline></video>
+            <div class="video-label">{{ username }}</div>
         </div>
 
-        <div class="control-buttons">
-            <button id="muteAudioBtn" class="button" onclick="toggleAudio()">🔇 Mute Audio</button>
-            <button id="disableVideoBtn" class="button" onclick="toggleVideo()">📷 Enable Video</button>
-            <button class="button" onclick="startScreenShare()">📺 Share Screen</button>
-            <button id="exitMeetingBtn" class="button" onclick="exitMeeting()">🚪 Exit Meeting</button>
-        </div>
-
-        <div id="chat">
-            <div id="messages"></div>
-            <div class="chat-input-group">
-                <input id="chatInput" placeholder="Type a message...">
-                <button id="sendBtn">Send</button>
-            </div>
+        <div class="video-container">
+            <video id="remoteVideo" autoplay playsinline></video>
+            <div class="video-label">Remote User</div>
         </div>
     </div>
 
-    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
-    <script src="{{ url_for('static', filename='main.js') }}"></script>
+    <div class="control-buttons">
+        <button id="muteAudioBtn" class="button" onclick="toggleAudio()">🔇 Mute Audio</button>
+        <button id="disableVideoBtn" class="button" onclick="toggleVideo()">📷 Disable Video</button>
+        <button class="button" onclick="startScreenShare()">📺 Share Screen</button>
+        <button id="exitMeetingBtn" class="button" onclick="exitMeeting()">🚪 Exit Meeting</button>
+    </div>
 
-    <script>
+    <div id="chat">
+        <div id="messages"></div>
+        <div class="chat-input-group">
+            <input id="chatInput" placeholder="Type a message...">
+            <button id="sendBtn">Send</button>
+        </div>
+    </div>
+</div>
 
-        function exitMeeting() {
-            if (localStream) {
-                localStream.getTracks().forEach(track => track.stop());
-            }
-            window.location.href = "/home";
+<script>
+/* -----------------------------------
+   VARIABLES FROM FLASK
+----------------------------------- */
+const ROOM_ID = "{{ room_id }}";
+const USERNAME = "{{ username }}";
+const TOKEN = "{{ token }}";
+
+/* -----------------------------------
+   MEDIA + PEER
+----------------------------------- */
+let localStream;
+let peerConnection;
+let ws;
+
+const rtcConfig = {
+    iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+};
+
+/* -----------------------------------
+   START MEDIA
+----------------------------------- */
+async function initMedia() {
+    localStream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true
+    });
+
+    document.getElementById("localVideo").srcObject = localStream;
+}
+
+/* -----------------------------------
+   WEBSOCKET (ERLANG)
+----------------------------------- */
+function connectWebSocket() {
+    ws = new WebSocket(
+        "ws://localhost:8080/ws?token=" + TOKEN
+    );
+
+    ws.onopen = () => {
+        console.log("Connected to Erlang WebSocket");
+
+        ws.send(JSON.stringify({
+            type: "join",
+            room: ROOM_ID,
+            user: USERNAME
+        }));
+    };
+
+    ws.onmessage = async (event) => {
+        const msg = JSON.parse(event.data);
+        console.log("WS:", msg);
+
+        if (msg.type === "offer") {
+            await handleOffer(msg.offer);
         }
-    </script>
+
+        if (msg.type === "answer") {
+            await peerConnection.setRemoteDescription(msg.answer);
+        }
+
+        if (msg.type === "ice") {
+            await peerConnection.addIceCandidate(msg.candidate);
+        }
+
+        if (msg.type === "chat") {
+            addChatMessage(msg.user, msg.message);
+        }
+    };
+
+    ws.onclose = () => {
+        console.log("WebSocket closed");
+    };
+}
+
+/* -----------------------------------
+   WEBRTC
+----------------------------------- */
+function createPeer() {
+    peerConnection = new RTCPeerConnection(rtcConfig);
+
+    localStream.getTracks().forEach(track =>
+        peerConnection.addTrack(track, localStream)
+    );
+
+    peerConnection.ontrack = (event) => {
+        document.getElementById("remoteVideo").srcObject = event.streams[0];
+    };
+
+    peerConnection.onicecandidate = (event) => {
+        if (event.candidate) {
+            ws.send(JSON.stringify({
+                type: "ice",
+                candidate: event.candidate
+            }));
+        }
+    };
+}
+
+async function createOffer() {
+    createPeer();
+    const offer = await peerConnection.createOffer();
+    await peerConnection.setLocalDescription(offer);
+
+    ws.send(JSON.stringify({
+        type: "offer",
+        offer: offer
+    }));
+}
+
+async function handleOffer(offer) {
+    createPeer();
+    await peerConnection.setRemoteDescription(offer);
+    const answer = await peerConnection.createAnswer();
+    await peerConnection.setLocalDescription(answer);
+
+    ws.send(JSON.stringify({
+        type: "answer",
+        answer: answer
+    }));
+}
+
+/* -----------------------------------
+   CHAT
+----------------------------------- */
+document.getElementById("sendBtn").onclick = () => {
+    const input = document.getElementById("chatInput");
+    const message = input.value.trim();
+    if (!message) return;
+
+    ws.send(JSON.stringify({
+        type: "chat",
+        message: message
+    }));
+
+    addChatMessage("Me", message);
+    input.value = "";
+};
+
+function addChatMessage(user, msg) {
+    const div = document.createElement("div");
+    div.textContent = `${user}: ${msg}`;
+    document.getElementById("messages").appendChild(div);
+}
+
+/* -----------------------------------
+   CONTROLS
+----------------------------------- */
+function toggleAudio() {
+    localStream.getAudioTracks()[0].enabled =
+        !localStream.getAudioTracks()[0].enabled;
+}
+
+function toggleVideo() {
+    localStream.getVideoTracks()[0].enabled =
+        !localStream.getVideoTracks()[0].enabled;
+}
+
+async function startScreenShare() {
+    const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+    const screenTrack = screenStream.getVideoTracks()[0];
+
+    const sender = peerConnection.getSenders()
+        .find(s => s.track.kind === "video");
+
+    sender.replaceTrack(screenTrack);
+}
+
+function exitMeeting() {
+    if (localStream) {
+        localStream.getTracks().forEach(t => t.stop());
+    }
+    if (ws) ws.close();
+    window.location.href = "/home";
+}
+
+/* -----------------------------------
+   INIT
+----------------------------------- */
+(async () => {
+    await initMedia();
+    connectWebSocket();
+})();
+</script>
+
 </body>
 </html>

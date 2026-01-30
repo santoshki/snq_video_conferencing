@@ -1,68 +1,112 @@
 from flask import Flask, render_template, request, redirect, url_for, session
-from flask_socketio import SocketIO, emit, join_room
 import uuid
+import jwt
+import time
 
 app = Flask(__name__)
-socketio = SocketIO(app)
 
-app.secret_key = 'your_secret_key'
+# ------------------------
+# CONFIG
+# ------------------------
+app.secret_key = "your_flask_session_secret"
+
+JWT_SECRET = "super_shared_secret_change_this"
+JWT_ALGO = "HS256"
+JWT_EXP_SECONDS = 3600  # 1 hour
 
 
+# ------------------------
+# LOGIN
+# ------------------------
 @app.route("/snq_login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        username = request.form["username"]
-        password = request.form["password"]
+        username = request.form.get("username")
+        password = request.form.get("password")
+
+        # ⚠️ Replace with DB later
         if username == "admin" and password == "password":
-            session["user"] = username  # store in session
+            session["user"] = username
             return redirect(url_for("home"))
         else:
-            return "Invalid credentials, try again."
+            return "Invalid credentials", 401
+
     return render_template("login.html")
 
 
+@app.route("/")
+def index():
+    if "user" in session:
+        return redirect(url_for("home"))
+    return redirect(url_for("login"))
+# ------------------------
+# HOME
+# ------------------------
 @app.route("/home", methods=["GET", "POST"])
 def home():
     username = session.get("user")
+
+    if not username:
+        return redirect(url_for("login"))
+
     if request.method == "POST":
         action = request.form.get("action")
+
         if action == "new_meeting":
             return redirect(url_for("new_meeting"))
-        elif action == "join_meeting":
-            return "Join Meeting feature not implemented yet."
+
     return render_template("snq_home.html", username=username)
 
 
-@app.route('/new_meeting')
+# ------------------------
+# CREATE MEETING
+# ------------------------
+@app.route("/new_meeting")
 def new_meeting():
+    if "user" not in session:
+        return redirect(url_for("login"))
+
     room_id = str(uuid.uuid4())
-    return redirect(url_for('start_meeting', room_id=room_id))
+    return redirect(url_for("meeting_room", room_id=room_id))
 
 
-# ✅ Corrected: include <room_id> in the route URL
-@app.route('/start_meeting/<room_id>', methods=["GET", "POST"])
-def start_meeting(room_id):
-    return render_template('new_meeting.html', room_id=room_id)
-
-
-@app.route('/meeting/<room_id>', methods=["GET", "POST"])
+# ------------------------
+# MEETING ROOM
+# ------------------------
+@app.route("/meeting/<room_id>")
 def meeting_room(room_id):
-    username = session.get("user", "Guest")  # fallback if not set
-    return render_template('room.html', room_id=room_id, username=username)
+    username = session.get("user", "Guest")
+
+    # Create JWT for Erlang
+    token = jwt.encode(
+        {
+            "user": username,
+            "room": room_id,
+            "exp": int(time.time()) + JWT_EXP_SECONDS
+        },
+        JWT_SECRET,
+        algorithm=JWT_ALGO
+    )
+
+    return render_template(
+        "room.html",
+        room_id=room_id,
+        username=username,
+        token=token
+    )
 
 
-@socketio.on('message')
-def handle_message(data):
-    room = data.get('room')
-    emit('message', data, room=room)
+# ------------------------
+# LOGOUT
+# ------------------------
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
 
 
-@socketio.on('join')
-def handle_join(data):
-    room = data.get('room')
-    join_room(room)
-    emit('message', {'type': 'chat', 'text': 'A user has joined the room.'}, room=room)
-
-
-if __name__ == '__main__':
-    socketio.run(app, debug=True, use_reloader=False, allow_unsafe_werkzeug=True)
+# ------------------------
+# MAIN
+# ------------------------
+if __name__ == "__main__":
+    app.run(debug=True)
