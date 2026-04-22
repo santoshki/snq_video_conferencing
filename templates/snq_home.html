@@ -28,15 +28,15 @@
 
     <!-- TOP BAR -->
     <header class="top-bar">
-        <div class="top-bar-title"></div>
+        <div class="top-bar-title">Welcome, {{ username }}!</div>
         <a href="{{ url_for('logout') }}" class="logout-button">Logout</a>
     </header>
 
     <!-- MAIN CONTENT -->
     <main class="page-content">
         <div class="login-container">
-            <h2>SnQ Home</h2>
-            <p>Welcome, {{ username }}!</p>
+            <h2>SnQ Video Conferencing</h2>
+            <p>Let's get Started</p>
 
             <form method="post">
                 <button type="submit" name="action" value="new_meeting">
