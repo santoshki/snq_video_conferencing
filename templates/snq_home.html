@@ -23,19 +23,26 @@
             <a href="#">📅 Past Meetings</a>
             <a href="#">⚙️ Settings</a>
             <a href="#">ℹ️ About</a>
+            <br><br>
+            <a href="{{ url_for('logout') }}" class="logout-button">Logout</a>
         </nav>
     </aside>
 
     <!-- TOP BAR -->
     <header class="top-bar">
         <div class="top-bar-title">Welcome, {{ username }}!</div>
-        <a href="{{ url_for('logout') }}" class="logout-button">Logout</a>
     </header>
 
     <!-- MAIN CONTENT -->
     <main class="page-content">
         <div class="login-container">
-            <h2>SnQ Video Conferencing</h2>
+
+            <!-- 🎥 Animated Title -->
+            <h2 class="title-with-icon">
+                <span class="video-icon">🎥</span>
+                SnQ Video Conferencing
+            </h2>
+
             <p>Let's get Started</p>
 
             <form method="post">
