@@ -3,58 +3,85 @@
 <head>
     <meta charset="UTF-8">
     <title>SnQ Home</title>
+
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <!-- CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='snq_home_screen_style.css') }}">
 </head>
 <body>
 
-    <!-- 🌊 BACKGROUND WAVES -->
-    <div class="wave-bg">
-        <span></span>
-        <span></span>
-        <span></span>
-    </div>
+<!-- 🌊 BACKGROUND -->
+<div class="wave-bg">
+    <span></span>
+    <span></span>
+    <span></span>
+</div>
 
-    <!-- 🔹 SIDEBAR -->
-    <aside class="sidebar">
-        <div class="sidebar-title">SnQ Home</div>
+<!-- 🔹 SIDEBAR -->
+<aside class="sidebar">
+    <div class="sidebar-title">SnQ Home</div>
 
-        <nav class="sidebar-menu">
-            <a href="#" class="active">🏠 Home</a>
-            <a href="#">📅 Past Meetings</a>
-            <a href="#">⚙️ Settings</a>
-            <a href="#">ℹ️ About</a>
-            <br><br>
-            <a href="{{ url_for('logout') }}" class="logout-button">Logout</a>
-        </nav>
-    </aside>
+    <nav class="sidebar-menu">
+        <a href="#" class="active">🏠 Home</a>
+        <a href="#">📅 Past Meetings</a>
+        <a href="#">⚙️ Settings</a>
+        <a href="#">ℹ️ About</a>
 
-    <!-- TOP BAR -->
-    <header class="top-bar">
-        <div class="top-bar-title">Welcome, {{ username }}!</div>
-    </header>
+        <div class="logout-wrapper">
+            <a href="{{ url_for('logout') }}" class="logout-button">
+                <i class="fas fa-right-from-bracket"></i>
+                Logout
+            </a>
+        </div>
+    </nav>
+</aside>
 
-    <!-- MAIN CONTENT -->
-    <main class="page-content">
-        <div class="login-container">
+<!-- 🔝 TOP BAR -->
+<header class="top-bar">
+    <div class="top-bar-title">Welcome, {{ username }}!</div>
+</header>
 
-            <!-- 🎥 Animated Title -->
-            <h2 class="title-with-icon">
-                <span class="video-icon">🎥</span>
-                SnQ Video Conferencing
-            </h2>
+<!-- 📄 MAIN -->
+<main class="page-content">
+    <div class="login-container">
 
-            <p>Let's get Started</p>
+        <!-- 🎥 HEADER -->
+        <h2 class="title-with-icon">
+            <span class="video-icon">🎥</span>
+            SnQ Video Conferencing
+        </h2>
 
+        <p class="tagline">Connect instantly. Collaborate seamlessly.</p>
+
+        <!-- 🔥 PRIMARY ACTION -->
+        <form method="post">
+            <button type="submit" name="action" value="new_meeting" class="primary-btn">
+                <i class="fas fa-video"></i>
+                New SnQ Meeting
+            </button>
+        </form>
+
+        <!-- SECONDARY ACTIONS -->
+        <div class="secondary-actions">
             <form method="post">
-                <button type="submit" name="action" value="new_meeting">
-                    New SnQ Meeting
-                </button>
-                <button type="submit" name="action" value="join_meeting">
+                <button type="submit" name="action" value="join_meeting" class="secondary-btn">
+                    <i class="fas fa-key"></i>
                     Join SnQ Meeting
                 </button>
             </form>
+
+            <form method="post">
+                <button type="submit" name="action" value="schedule_meeting" class="secondary-btn">
+                    <i class="fas fa-calendar-plus"></i>
+                    Schedule Meeting
+                </button>
+            </form>
         </div>
-    </main>
+
+    </div>
+</main>
 
 </body>
 </html>
