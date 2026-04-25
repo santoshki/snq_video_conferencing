@@ -9,8 +9,9 @@
 
 body {
     font-family: 'Segoe UI', sans-serif;
-    background: radial-gradient(circle at top, #0f172a, #020617);
-    color: #e2e8f0;
+
+    background: radial-gradient(circle at top, #1e293b, #020617);
+    color: #f1f5f9;
 }
 
 /* ===============================
@@ -20,6 +21,7 @@ body {
     position: fixed;
     width: 100%;
     height: 100%;
+    overflow: hidden;
     z-index: 0;
 }
 
@@ -29,20 +31,25 @@ body {
     height: 130%;
     top: -15%;
     left: -15%;
-    background: radial-gradient(circle at 30% 30%, rgba(34, 211, 238, 0.18), transparent 60%);
+
+    background: radial-gradient(circle at 30% 30%, rgba(59,130,246,0.25), transparent 60%);
     animation: waveMove 12s linear infinite;
 }
 
 .wave-bg span:nth-child(2) {
     animation-duration: 16s;
+    background: radial-gradient(circle at 70% 70%, rgba(14,165,233,0.18), transparent 60%);
 }
 
 .wave-bg span:nth-child(3) {
     animation-duration: 20s;
+    background: radial-gradient(circle at 50% 50%, rgba(34,211,238,0.15), transparent 60%);
 }
 
 @keyframes waveMove {
-    100% { transform: rotate(360deg); }
+    0% { transform: translate(0,0) rotate(0deg); }
+    50% { transform: translate(40px,-40px) rotate(180deg); }
+    100% { transform: translate(0,0) rotate(360deg); }
 }
 
 /* ===============================
@@ -54,17 +61,18 @@ body {
     height: 100vh;
     padding: 20px;
 
-    background: linear-gradient(180deg, rgba(15,23,42,0.95), rgba(2,6,23,0.9));
-    backdrop-filter: blur(18px);
+    background: linear-gradient(180deg, #020617, #020617);
 
-    border-right: 1px solid rgba(59,130,246,0.2);
-    box-shadow: 8px 0 25px rgba(0,0,0,0.7);
+    border-right: 1px solid rgba(59,130,246,0.3);
+    box-shadow: 8px 0 30px rgba(0,0,0,0.9);
+
+    z-index: 2;
 }
 
 .sidebar-title {
     text-align: center;
     font-size: 22px;
-    color: #22d3ee;
+    color: #38bdf8;
     margin-bottom: 25px;
 }
 
@@ -73,16 +81,18 @@ body {
     padding: 10px;
     margin: 8px 0;
     border-radius: 8px;
-    color: #e2e8f0;
+    color: #cbd5f5;
     text-decoration: none;
+    transition: 0.3s;
 }
 
 .sidebar-menu a:hover {
-    background: rgba(59,130,246,0.15);
+    background: rgba(59,130,246,0.2);
 }
 
 .sidebar-menu a.active {
-    background: linear-gradient(135deg, #06b6d4, #3b82f6);
+    background: linear-gradient(135deg, #0ea5e9, #2563eb);
+    color: white;
 }
 
 /* ===============================
@@ -95,18 +105,19 @@ body {
 .logout-button {
     display: flex;
     align-items: center;
-    gap: 10px;
-    width: 120px;
-    padding: 10px;
+    gap: 55px;
+
+    padding: 30px;
     border-radius: 10px;
 
-    background: linear-gradient(135deg, #ef4444, #dc2626);
+    background: linear-gradient(135deg, #ef4444, #b91c1c);
     color: white;
     text-decoration: none;
+    transition: 0.3s;
 }
 
 .logout-button:hover {
-    box-shadow: 0 0 12px rgba(239,68,68,0.6);
+    box-shadow: 0 0 15px rgba(239,68,68,0.7);
 }
 
 /* ===============================
@@ -124,13 +135,16 @@ body {
 
     padding: 0 24px;
 
-    background: linear-gradient(90deg, rgba(15,23,42,0.95), rgba(30,41,59,0.9));
-    border-bottom: 1px solid rgba(59,130,246,0.2);
+    background: linear-gradient(90deg, #020617, #0f172a);
+    border-bottom: 1px solid rgba(59,130,246,0.25);
+
+    z-index: 3;
 }
 
 .top-bar-title {
     font-size: 20px;
     font-weight: 600;
+    color: #e2e8f0;
 }
 
 /* ===============================
@@ -139,8 +153,12 @@ body {
 .page-content {
     margin-left: 220px;
     padding-top: 120px;
+
     display: flex;
     justify-content: center;
+
+    position: relative;
+    z-index: 1;
 }
 
 /* ===============================
@@ -151,13 +169,23 @@ body {
     padding: 40px;
 
     border-radius: 18px;
-    background: rgba(255,255,255,0.05);
 
-    backdrop-filter: blur(18px);
-    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.08);
+    backdrop-filter: blur(20px);
 
-    box-shadow: 10px 10px 30px rgba(0,0,0,0.6);
+    border: 1px solid rgba(255,255,255,0.15);
+
+    box-shadow:
+        0 0 40px rgba(59,130,246,0.15),
+        10px 10px 30px rgba(0,0,0,0.7);
+
     text-align: center;
+
+    transition: 0.3s;
+}
+
+.login-container:hover {
+    transform: translateY(-4px);
 }
 
 /* ===============================
@@ -176,7 +204,10 @@ body {
 }
 
 @keyframes pulse {
-    50% { transform: scale(1.2); }
+    50% {
+        transform: scale(1.2);
+        text-shadow: 0 0 15px #3b82f6;
+    }
 }
 
 /* ===============================
@@ -184,16 +215,17 @@ body {
 ================================ */
 .tagline {
     margin: 12px 0 30px;
-    color: #94a3b8;
+    color: #cbd5f5;
 }
 
 /* ===============================
-   PRIMARY BUTTON (NEW MEETING)
+   PRIMARY BUTTON
 ================================ */
 .primary-btn {
-    width: 100%;
+    width: 80%;
     padding: 16px;
     margin-top: 10px;
+    margin-left: 40px;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -203,9 +235,9 @@ body {
     border: none;
 
     font-size: 16px;
-    font-weight: 500;
+    font-weight: 600;
 
-    background: linear-gradient(135deg, #06b6d4, #3b82f6);
+    background: linear-gradient(135deg, #0ea5e9, #2563eb);
     color: white;
 
     cursor: pointer;
@@ -213,12 +245,11 @@ body {
 }
 
 .primary-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 0 20px rgba(59,130,246,0.6);
+   background: #334155;
 }
 
 /* ===============================
-   SECONDARY BUTTONS (VERTICAL)
+   SECONDARY BUTTONS
 ================================ */
 .secondary-actions {
     display: flex;
@@ -228,30 +259,32 @@ body {
 }
 
 .secondary-btn {
-    width: 100%;
-    padding: 14px;
-
+    width: 80%;
+    padding: 16px;
+    margin-top: 10px;
+    margin-left: 40px;
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 8px;
-    font-size: 16px;
-    font-weight: 500;
-    margin-top: 10px;
-    border-radius: 10px;
+    gap: 10px;
+
+    border-radius: 12px;
     border: none;
 
-    background: #0f172a;
-    color: #e2e8f0;
+    font-size: 16px;
+    font-weight: 600;
+
+    background: linear-gradient(135deg, #0ea5e9, #2563eb);
+    color: white;
 
     cursor: pointer;
     transition: 0.3s;
 }
 
 .secondary-btn:hover {
-    background: rgba(59,130,246,0.15);
+    background: #334155;
 }
 
 /* ICON COLORS */
-.secondary-btn:nth-child(1) i { color: #3b82f6; }
-.secondary-btn:nth-child(2) i { color: #f59e0b; }
+.secondary-actions form:nth-child(1) i { color: #38bdf8; }
+.secondary-actions form:nth-child(2) i { color: #fbbf24; }
