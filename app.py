@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 import uuid
 import jwt
 import time
@@ -39,6 +39,8 @@ def index():
     if "user" in session:
         return redirect(url_for("home"))
     return redirect(url_for("login"))
+
+
 # ------------------------
 # HOME
 # ------------------------
@@ -52,22 +54,34 @@ def home():
     if request.method == "POST":
         action = request.form.get("action")
 
-        if action == "new_meeting":
-            return redirect(url_for("new_meeting"))
+        # 🔥 Modal form submission
+        if action == "create_meeting":
+            meeting_id = request.form.get("meeting_id")
+            meeting_title = request.form.get("meeting_title")
+
+            # (Optional) store meeting_title in DB later
+
+            return redirect(url_for("meeting_room", room_id=meeting_id))
 
     return render_template("snq_home.html", username=username)
 
 
 # ------------------------
-# CREATE MEETING
+# 🔥 GENERATE MEETING ID (API)
 # ------------------------
-@app.route("/new_meeting")
-def new_meeting():
+@app.route("/generate_meeting_id")
+def generate_meeting_id():
     if "user" not in session:
-        return redirect(url_for("login"))
+        return jsonify({"error": "Unauthorized"}), 401
 
-    room_id = str(uuid.uuid4())
-    return redirect(url_for("meeting_room", room_id=room_id))
+    # Google Meet style ID: abc-def-ghi
+    meeting_id = "-".join([
+        uuid.uuid4().hex[:3],
+        uuid.uuid4().hex[3:6],
+        uuid.uuid4().hex[6:9]
+    ])
+
+    return jsonify({"meeting_id": meeting_id})
 
 
 # ------------------------
@@ -77,7 +91,7 @@ def new_meeting():
 def meeting_room(room_id):
     username = session.get("user", "Guest")
 
-    # Create JWT for Erlang
+    # 🔐 Create JWT token
     token = jwt.encode(
         {
             "user": username,

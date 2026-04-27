@@ -10,6 +10,7 @@
     <!-- CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='snq_home_screen_style.css') }}">
 </head>
+
 <body>
 
 <!-- 🌊 BACKGROUND -->
@@ -56,12 +57,10 @@
         <p class="tagline">Connect instantly. Collaborate seamlessly.</p>
 
         <!-- 🔥 PRIMARY ACTION -->
-        <form method="post">
-            <button type="submit" name="action" value="new_meeting" class="primary-btn">
-                <i class="fas fa-video"></i>
-                New SnQ Meeting
-            </button>
-        </form>
+        <button type="button" onclick="openModal()" class="primary-btn">
+            <i class="fas fa-video"></i>
+            New SnQ Meeting
+        </button>
 
         <!-- SECONDARY ACTIONS -->
         <div class="secondary-actions">
@@ -82,6 +81,68 @@
 
     </div>
 </main>
+
+<!-- 🟣 NEW MEETING MODAL -->
+<div id="meetingModal" class="modal">
+    <div class="modal-content">
+
+        <div class="modal-header">
+            <h3>🎥 Start New Meeting</h3>
+            <span class="close-btn" onclick="closeModal()">✖</span>
+        </div>
+
+        <form method="post" class="modal-form">
+            <input type="hidden" name="action" value="create_meeting">
+
+            <!-- Meeting Title -->
+            <div class="form-group">
+                <label>Meeting Title</label>
+                <input type="text" name="meeting_title" placeholder="e.g. Team Sync" required>
+            </div>
+
+            <!-- Meeting ID -->
+            <div class="form-group">
+                <label>Meeting ID</label>
+                <div class="input-with-btn">
+                    <input type="text" name="meeting_id" id="generatedId" readonly>
+                    <button type="button" onclick="copyMeetingId()">Copy</button>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="modal-actions">
+                <button type="button" class="cancel-btn" onclick="closeModal()">Cancel</button>
+                <button type="submit" class="primary-btn">Start Meeting</button>
+            </div>
+        </form>
+
+    </div>
+</div>
+
+<!-- ⚡ SCRIPT -->
+<script>
+function generateMeetingId() {
+    return 'snq-' + Math.random().toString(36).substring(2, 10);
+}
+
+function openModal() {
+    const modal = document.getElementById("meetingModal");
+    modal.style.display = "flex";
+
+    const idField = document.getElementById("generatedId");
+    idField.value = generateMeetingId();
+}
+
+function closeModal() {
+    document.getElementById("meetingModal").style.display = "none";
+}
+
+function copyMeetingId() {
+    const input = document.getElementById("generatedId");
+    input.select();
+    document.execCommand("copy");
+}
+</script>
 
 </body>
 </html>
