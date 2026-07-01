@@ -122,7 +122,7 @@
     </div>
 </div>
 
-<!-- 🟢 JOIN MEETING MODAL -->
+
 <!-- 🟢 JOIN MEETING MODAL -->
 <div id="joinMeetingModal" class="modal">
     <div class="modal-content">
@@ -135,7 +135,14 @@
         <form method="post" class="modal-form">
             <input type="hidden" name="action" value="join_meeting">
 
-            <!-- Optional Meeting Name -->
+            <div class="form-group">
+                <label>Meeting Name (Optional)</label>
+                <input
+                    type="text"
+                    name="meeting_name"
+                    placeholder="e.g. John Doe">
+            </div>
+
             <div class="form-group">
                 <label>Meeting ID</label>
                 <input
@@ -143,19 +150,8 @@
                     name="meeting_id"
                     placeholder="Enter Meeting ID"
                     required>
-
             </div>
 
-            <!-- Meeting ID -->
-            <div class="form-group">
-                <label>Meeting Name <small>(Optional)</small></label>
-                <input
-                    type="text"
-                    name="meeting_name"
-                    placeholder="e.g. John Smith">
-            </div>
-
-            <!-- Actions -->
             <div class="modal-actions">
                 <button
                     type="button"

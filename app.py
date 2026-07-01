@@ -54,34 +54,72 @@ def home():
     if request.method == "POST":
         action = request.form.get("action")
 
-        # 🔥 Modal form submission
+        # ------------------------
+        # CREATE NEW MEETING
+        # ------------------------
         if action == "create_meeting":
+
             meeting_id = request.form.get("meeting_id")
             meeting_title = request.form.get("meeting_title")
 
-            # (Optional) store meeting_title in DB later
+            # TODO:
+            # Save meeting_title and meeting_id in database
 
-            return redirect(url_for("meeting_room", room_id=meeting_id))
+            return redirect(
+                url_for(
+                    "meeting_room",
+                    room_id=meeting_id
+                )
+            )
 
-    return render_template("snq_home.html", username=username)
+        # ------------------------
+        # JOIN EXISTING MEETING
+        # ------------------------
+        elif action == "join_meeting":
+
+            meeting_id = request.form.get("meeting_id")
+            meeting_name = request.form.get("meeting_name")  # Optional
+
+            if not meeting_id:
+                return redirect(url_for("home"))
+
+            # TODO:
+            # Validate meeting exists in DB
+            # meeting_name can be ignored or validated later
+
+            return redirect(
+                url_for(
+                    "meeting_room",
+                    room_id=meeting_id
+                )
+            )
+
+    return render_template(
+        "snq_home.html",
+        username=username
+    )
 
 
 # ------------------------
-# 🔥 GENERATE MEETING ID (API)
+# GENERATE MEETING ID (API)
 # ------------------------
 @app.route("/generate_meeting_id")
 def generate_meeting_id():
+
     if "user" not in session:
         return jsonify({"error": "Unauthorized"}), 401
 
-    # Google Meet style ID: abc-def-ghi
+    # Google Meet style:
+    # abc-def-ghi
     meeting_id = "-".join([
         uuid.uuid4().hex[:3],
         uuid.uuid4().hex[3:6],
         uuid.uuid4().hex[6:9]
     ])
 
-    return jsonify({"meeting_id": meeting_id})
+    return jsonify({
+        "meeting_id": meeting_id
+    })
 
 
 # ------------------------
@@ -89,9 +127,9 @@ def generate_meeting_id():
 # ------------------------
 @app.route("/meeting/<room_id>")
 def meeting_room(room_id):
+
     username = session.get("user", "Guest")
 
-    # 🔐 Create JWT token
     token = jwt.encode(
         {
             "user": username,
