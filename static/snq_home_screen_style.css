@@ -158,8 +158,8 @@ body {
 ================================ */
 .login-container {
     width: 420px;
-    padding: 40px;
-    height: 370px;
+    padding: 15px;
+    height: 350px;
     border-radius: 18px;
     background: rgba(255,255,255,0.08);
     backdrop-filter: blur(20px);
@@ -172,14 +172,14 @@ body {
    TITLE
 ================================ */
 .title-with-icon {
-    display: flex;
+    display: inline-block;
     justify-content: center;
     align-items: center;
-    gap: 10px;
+    gap: 5px;
 }
 
 .video-icon {
-    font-size: 28px;
+    font-size: 35px;
     animation: pulse 1.6s infinite;
 }
 
@@ -200,7 +200,7 @@ body {
 ================================ */
 .primary-btn,
 .secondary-btn {
-    width: 100%;
+    width: 80%;
     height: 52px;
 
     display: flex;
@@ -216,6 +216,7 @@ body {
 
     cursor: pointer;
     transition: 0.3s;
+    margin-left: 35px;
 }
 
 /* PRIMARY */
@@ -277,7 +278,7 @@ body {
 ================================ */
 .modal-content {
     width: 480px;
-    height: 350px;
+    height: 360px;
 
     padding: 16px 18px 12px; /* top right/left bottom */
 
@@ -383,18 +384,18 @@ body {
 }
 
 .copy-btn {
-    width: 60px;
-    height: 40px;
+    width: 75px;
+    height: 45px;
 
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 15px;
+    gap: 25px;
 
     border-radius: 12px;
     border: none;
 
-    font-size: 10px;
+    font-size: 13px;
     font-weight: 500;
 
     cursor: pointer;

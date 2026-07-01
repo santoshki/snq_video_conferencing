@@ -65,7 +65,10 @@
         <!-- SECONDARY ACTIONS -->
         <div class="secondary-actions">
             <form method="post">
-                <button type="submit" name="action" value="join_meeting" class="secondary-btn">
+                <button
+                    type="button"
+                    class="secondary-btn"
+                    onclick="openJoinModal()">
                     <i class="fas fa-key"></i>
                     Join SnQ Meeting
                 </button>
@@ -119,6 +122,60 @@
     </div>
 </div>
 
+<!-- 🟢 JOIN MEETING MODAL -->
+<!-- 🟢 JOIN MEETING MODAL -->
+<div id="joinMeetingModal" class="modal">
+    <div class="modal-content">
+
+        <div class="modal-header">
+            <h3>🔑 Join SnQ Meeting</h3>
+            <span class="close-btn" onclick="closeJoinModal()">✖</span>
+        </div>
+
+        <form method="post" class="modal-form">
+            <input type="hidden" name="action" value="join_meeting">
+
+            <!-- Optional Meeting Name -->
+            <div class="form-group">
+                <label>Meeting ID</label>
+                <input
+                    type="text"
+                    name="meeting_id"
+                    placeholder="Enter Meeting ID"
+                    required>
+
+            </div>
+
+            <!-- Meeting ID -->
+            <div class="form-group">
+                <label>Meeting Name <small>(Optional)</small></label>
+                <input
+                    type="text"
+                    name="meeting_name"
+                    placeholder="e.g. John Smith">
+            </div>
+
+            <!-- Actions -->
+            <div class="modal-actions">
+                <button
+                    type="button"
+                    class="cancel-btn"
+                    onclick="closeJoinModal()">
+                    Cancel
+                </button>
+
+                <button
+                    type="submit"
+                    class="primary-btn">
+                    Join Meeting
+                </button>
+            </div>
+
+        </form>
+
+    </div>
+</div>
+
 <!-- ⚡ SCRIPT -->
 <script>
 function generateMeetingId() {
@@ -141,6 +198,24 @@ function copyMeetingId() {
     const input = document.getElementById("generatedId");
     input.select();
     document.execCommand("copy");
+}
+
+function openJoinModal() {
+    document.getElementById("joinMeetingModal").style.display = "flex";
+}
+
+function closeJoinModal() {
+    document.getElementById("joinMeetingModal").style.display = "none";
+}
+window.onclick = function(event) {
+
+    if (event.target == document.getElementById("meetingModal")) {
+        closeModal();
+    }
+
+    if (event.target == document.getElementById("joinMeetingModal")) {
+        closeJoinModal();
+    }
 }
 </script>
 
