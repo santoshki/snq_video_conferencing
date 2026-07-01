@@ -1,0 +1,337 @@
+.quick-actions{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:20px;
+}
+
+.action-card{
+    background:rgba(255,255,255,.08);
+    border:1px solid rgba(255,255,255,.12);
+
+    border-radius:18px;
+
+    padding:30px;
+
+    text-align:center;
+
+    transition:.3s;
+
+    cursor:pointer;
+
+    backdrop-filter:blur(20px);
+}
+
+.action-card:hover{
+    transform:translateY(-6px);
+
+    box-shadow:0 0 30px rgba(59,130,246,.25);
+}
+
+.action-icon{
+    font-size:42px;
+    margin-bottom:18px;
+}
+
+.action-title{
+    font-size:20px;
+    font-weight:600;
+}
+
+.action-subtitle{
+    margin-top:8px;
+    color:#94a3b8;
+    font-size:14px;
+}
+
+/* accent colors */
+
+.new-meeting{
+    border-left:5px solid #3b82f6;
+}
+
+.join-meeting{
+    border-left:5px solid #10b981;
+}
+
+.schedule-meeting{
+    border-left:5px solid #8b5cf6;
+}
+
+/* ===============================
+   GRID
+================================ */
+
+.dashboard-grid{
+
+    display:grid;
+
+    grid-template-columns:
+        repeat(auto-fit,minmax(340px,1fr));
+
+    gap:22px;
+
+}
+
+/* ===============================
+   DASHBOARD CARD
+================================ */
+
+.dashboard-card{
+
+    background:rgba(255,255,255,.08);
+
+    backdrop-filter:blur(18px);
+
+    border:1px solid rgba(255,255,255,.10);
+
+    border-radius:18px;
+
+    padding:22px;
+
+    transition:.3s;
+
+}
+
+.dashboard-card:hover{
+
+    transform:translateY(-4px);
+
+    box-shadow:0 0 25px rgba(59,130,246,.18);
+
+}
+
+.dashboard-card h3{
+
+    color:#38bdf8;
+
+    margin-bottom:18px;
+
+    font-size:20px;
+
+}
+
+/* ===============================
+   LISTS
+================================ */
+
+.dashboard-card ul{
+
+    list-style:none;
+
+}
+
+.dashboard-card li{
+
+    padding:14px 0;
+
+    border-bottom:1px solid rgba(255,255,255,.08);
+
+    color:#dbeafe;
+
+}
+
+.dashboard-card li:last-child{
+
+    border-bottom:none;
+
+}
+
+/* ===============================
+   STATISTICS
+================================ */
+
+.stats-grid{
+
+    display:grid;
+
+    grid-template-columns:repeat(2,1fr);
+
+    gap:18px;
+
+}
+
+.stat-box{
+
+    background:#111827;
+
+    border-radius:15px;
+
+    padding:20px;
+
+    text-align:center;
+
+}
+
+.stat-number{
+
+    font-size:34px;
+
+    font-weight:700;
+
+    color:#38bdf8;
+
+}
+
+.stat-label{
+
+    margin-top:8px;
+
+    color:#94a3b8;
+
+}
+
+/* ===============================
+   UPCOMING MEETINGS
+================================ */
+
+.meeting-item{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+
+    padding:14px 0;
+
+    border-bottom:1px solid rgba(255,255,255,.08);
+
+}
+
+.meeting-item:last-child{
+
+    border-bottom:none;
+
+}
+
+.meeting-title{
+
+    font-weight:600;
+
+}
+
+.meeting-time{
+
+    color:#38bdf8;
+
+    font-size:14px;
+
+}
+
+/* ===============================
+   ACTIVITY
+================================ */
+
+.activity-item{
+
+    display:flex;
+
+    gap:14px;
+
+    align-items:flex-start;
+
+    margin-bottom:18px;
+
+}
+
+.activity-icon{
+
+    width:40px;
+
+    height:40px;
+
+    border-radius:50%;
+
+    background:#1e3a8a;
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:center;
+
+    color:white;
+
+}
+
+.activity-text{
+
+    color:#cbd5f5;
+
+}
+
+/* ===============================
+   SEARCH BAR
+================================ */
+
+.search-box{
+
+    display:flex;
+
+    align-items:center;
+
+    background:#111827;
+
+    border-radius:14px;
+
+    padding:14px 18px;
+
+    border:1px solid rgba(255,255,255,.08);
+
+}
+
+.search-box input{
+
+    width:100%;
+
+    background:transparent;
+
+    border:none;
+
+    color:white;
+
+    outline:none;
+
+    margin-left:12px;
+
+    font-size:15px;
+
+}
+
+/* ===============================
+   RESPONSIVE
+================================ */
+
+@media (max-width:1100px){
+
+.quick-actions{
+
+grid-template-columns:1fr;
+
+}
+
+.stats-grid{
+
+grid-template-columns:1fr;
+
+}
+
+}
+
+@media (max-width:768px){
+
+.page-content{
+
+margin-left:0;
+
+padding:90px 15px 20px;
+
+}
+
+.dashboard{
+
+width:100%;
+
+}
+
+}
