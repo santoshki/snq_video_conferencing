@@ -8,37 +8,185 @@
 </head>
 
 <body>
-<div class="container">
-    <h2>SnQ Meeting</h2>
+<div class="container" id="meetingContainer">
+    <!-- =========================
+     Meeting Header
+========================= -->
+<div class="meeting-header">
 
-    <div id="meetingTimer" class="timer">Meeting Duration: 00:00</div>
-
-    <div class="video-wrapper">
-        <div class="video-container">
-            <video id="localVideo" autoplay muted playsinline></video>
-            <div class="video-label">{{ username }}</div>
+    <div class="meeting-left">
+        <div class="meeting-title">
+            <h2>SnQ Meeting</h2>
+            <span class="secure-badge">🔒 Secure</span>
         </div>
 
-        <div class="video-container">
-            <video id="remoteVideo" autoplay playsinline></video>
-            <div class="video-label">Remote User</div>
+        <div class="meeting-room">
+            <span class="label">Room:</span>
+            <span id="roomId">{{ room_id }}</span>
+        </div>
+    </div>
+
+    <div class="meeting-center">
+        <div class="meeting-timer">
+            <span class="timer-label">Duration</span>
+            <div id="meetingTimer" class="timer">00:00</div>
+        </div>
+    </div>
+
+    <div class="meeting-right">
+
+        <div class="participant-info">
+            👥
+            <span id="participantCount">1</span>
+        </div>
+
+        <button id="copyRoomBtn" class="header-btn">
+            📋 Copy Invite
+        </button>
+
+    </div>
+
+</div>
+
+    <!-- ===================================
+     Video Area
+==================================== -->
+<div class="meeting-stage">
+    <!-- Main Remote Video -->
+    <div class="remote-video-container">
+        <video id="remoteVideo"
+               autoplay
+               playsinline></video>
+        <div class="video-overlay">
+            <div class="user-info">
+                <span class="status-dot"></span>
+                <span id="remoteUserName">Remote User</span>
+            </div>
+            <div class="network-badge">
+                🟢 HD
+            </div>
         </div>
     </div>
 
-    <div class="control-buttons">
-        <button id="muteAudioBtn" class="button" onclick="toggleAudio()">🔇 Mute Audio</button>
-        <button id="disableVideoBtn" class="button" onclick="toggleVideo()">📷 Disable Video</button>
-        <button class="button" onclick="startScreenShare()">📺 Share Screen</button>
-        <button id="exitMeetingBtn" class="button" onclick="exitMeeting()">🚪 Exit Meeting</button>
-    </div>
+    <div class="local-preview">
+        <video id="localVideo"
+               autoplay
+               muted
+               playsinline></video>
 
-    <div id="chat">
-        <div id="messages"></div>
-        <div class="chat-input-group">
-            <input id="chatInput" placeholder="Type a message...">
-            <button id="sendBtn">Send</button>
+        <div class="local-label">
+            <span>You ({{ username }})</span>
         </div>
     </div>
+</div>
+
+    <!-- ===================================
+     Meeting Control Dock
+==================================== -->
+<div class="meeting-controls">
+
+    <button id="muteAudioBtn"
+            class="control-btn"
+            onclick="toggleAudio()"
+            title="Mute Microphone">
+
+        <span class="control-icon">🎤</span>
+        <span class="control-text">Mic</span>
+
+    </button>
+
+    <button id="disableVideoBtn"
+            class="control-btn"
+            onclick="toggleVideo()"
+            title="Toggle Camera">
+
+        <span class="control-icon">📷</span>
+        <span class="control-text">Camera</span>
+
+    </button>
+
+    <button id="screenShareBtn"
+            class="control-btn"
+            onclick="startScreenShare()"
+            title="Share Screen">
+
+        <span class="control-icon">🖥️</span>
+        <span class="control-text">Share</span>
+
+    </button>
+
+    <button id="chatToggleBtn"
+            class="control-btn"
+            title="Chat">
+
+        <span class="control-icon">💬</span>
+        <span class="control-text">Chat</span>
+
+    </button>
+
+    <button id="participantsBtn"
+            class="control-btn"
+            title="Participants">
+
+        <span class="control-icon">👥</span>
+        <span class="control-text">People</span>
+
+    </button>
+
+    <button id="settingsBtn"
+            class="control-btn"
+            title="Settings">
+
+        <span class="control-icon">⚙️</span>
+        <span class="control-text">Settings</span>
+
+    </button>
+
+    <button id="exitMeetingBtn"
+            class="control-btn danger"
+            onclick="exitMeeting()"
+            title="Leave Meeting">
+
+        <span class="control-icon">📞</span>
+        <span class="control-text">Leave</span>
+
+    </button>
+
+</div>
+
+    </div> <!-- End .container -->
+
+<!-- ======================================
+     Chat Sidebar
+====================================== -->
+
+<div id="chatPanel" class="chat-panel">
+
+    <div class="chat-header">
+
+        <h3>Meeting Chat</h3>
+
+        <button id="closeChatBtn">
+            ✕
+        </button>
+
+    </div>
+
+    <div id="messages"></div>
+
+    <div class="chat-input-group">
+
+        <input
+            id="chatInput"
+            placeholder="Type a message...">
+
+        <button id="sendBtn">
+            Send
+        </button>
+
+    </div>
+
+</div>
 </div>
 
 <script>
@@ -224,6 +372,26 @@ function exitMeeting() {
     await initMedia();
     connectWebSocket();
 })();
+const chatPanel = document.getElementById("chatPanel");
+const meetingContainer = document.getElementById("meetingContainer");
+
+document
+    .getElementById("chatToggleBtn")
+    .onclick = () => {
+
+    chatPanel.classList.add("open");
+    meetingContainer.classList.add("chat-open");
+
+};
+
+document
+    .getElementById("closeChatBtn")
+    .onclick = () => {
+
+    chatPanel.classList.remove("open");
+    meetingContainer.classList.remove("chat-open");
+
+};
 </script>
 
 </body>
