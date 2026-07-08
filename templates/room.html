@@ -4,10 +4,12 @@
     <meta charset="UTF-8">
     <title>SnQ Video Chat</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="{{ url_for('static', filename='index_styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='room_styles.css') }}">
 </head>
 
 <body>
+<div id="toastContainer"></div>
+
 <div class="container" id="meetingContainer">
     <!-- =========================
      Meeting Header
@@ -16,7 +18,9 @@
 
     <div class="meeting-left">
         <div class="meeting-title">
-            <h2>SnQ Meeting</h2>
+            <h2 id="meetingTitle">
+                {{ meeting_title if meeting_title else "SnQ Meeting" }}
+            </h2>
             <span class="secure-badge">🔒 Secure</span>
         </div>
 
@@ -57,10 +61,10 @@
         <video id="remoteVideo"
                autoplay
                playsinline></video>
-        <div class="video-overlay">
+        <div id="remoteEmptyState" class="video-overlay">
             <div class="user-info">
                 <span class="status-dot"></span>
-                <span id="remoteUserName">Remote User</span>
+                <span id="remoteUserName">Waiting for someone to join…</span>
             </div>
             <div class="network-badge">
                 🟢 HD
@@ -91,7 +95,7 @@
             title="Mute Microphone">
 
         <span class="control-icon">🎤</span>
-        <span class="control-text">Mic</span>
+        <span class="control-text">Mic On</span>
 
     </button>
 
@@ -107,7 +111,7 @@
 
     <button id="screenShareBtn"
             class="control-btn"
-            onclick="startScreenShare()"
+            onclick="toggleScreenShare()"
             title="Share Screen">
 
         <span class="control-icon">🖥️</span>
@@ -201,17 +205,52 @@ const TOKEN = "{{ token }}";
    GLOBALS
 ----------------------------------- */
 let localStream = null;
+let cameraTrack = null;       // original camera video track (kept aside during screen share)
 let peerConnection = null;
 let ws = null;
 
 let meetingStartTime = null;
 let meetingTimerInterval = null;
 
+let isAudioEnabled = true;
+let isVideoEnabled = true;
+let isScreenSharing = false;
+
+let remoteUser = null;        // name of the other participant, once known
+let participantCount = 1;
+
 const rtcConfig = {
     iceServers: [
         { urls: "stun:stun.l.google.com:19302" }
     ]
 };
+
+/* -----------------------------------
+   TOASTS / NOTIFICATIONS
+----------------------------------- */
+function showToast(text) {
+    const container = document.getElementById("toastContainer");
+    const toast = document.createElement("div");
+    toast.className = "snq-toast";
+    toast.textContent = text;
+    container.appendChild(toast);
+
+    requestAnimationFrame(() => toast.classList.add("show"));
+
+    setTimeout(() => {
+        toast.classList.remove("show");
+        setTimeout(() => toast.remove(), 300);
+    }, 3500);
+}
+
+/* -----------------------------------
+   PARTICIPANT COUNT
+----------------------------------- */
+function setParticipantCount(count) {
+    participantCount = count;
+    const el = document.getElementById("participantCount");
+    if (el) el.textContent = String(count);
+}
 
 /* -----------------------------------
    MEETING TIMER
@@ -269,11 +308,14 @@ async function initMedia() {
             audio: true
         });
 
+        cameraTrack = localStream.getVideoTracks()[0] || null;
+
         document.getElementById("localVideo").srcObject = localStream;
 
     } catch (err) {
 
         console.error("Media Error:", err);
+        showToast("Could not access camera/microphone");
 
     }
 
@@ -286,7 +328,10 @@ function connectWebSocket() {
 
     try {
 
-        ws = new WebSocket("ws://localhost:8080/ws?token=" + TOKEN);
+        const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+        // NOTE: adjust host/port here to match your signaling server deployment.
+        const wsHost = window.location.hostname || "localhost";
+        ws = new WebSocket(protocol + "://" + wsHost + ":8080/ws?token=" + encodeURIComponent(TOKEN));
 
         ws.onopen = () => {
 
@@ -302,12 +347,37 @@ function connectWebSocket() {
 
         ws.onmessage = async (event) => {
 
-            const msg = JSON.parse(event.data);
+            let msg;
+            try {
+                msg = JSON.parse(event.data);
+            } catch (e) {
+                console.error("Bad WS message:", event.data);
+                return;
+            }
 
             switch (msg.type) {
 
+                /* Sent by server right after we join, describing who's
+                   already in the room. Expected shape:
+                   { type: "room-info", users: ["alice"], count: 2 } */
+                case "room-info":
+                    handleRoomInfo(msg);
+                    break;
+
+                /* Sent to everyone already in the room when someone new joins.
+                   Expected shape: { type: "user-joined", user: "bob", count: 2 } */
+                case "user-joined":
+                    await handleUserJoined(msg);
+                    break;
+
+                /* Sent to remaining participants when someone leaves.
+                   Expected shape: { type: "user-left", user: "bob", count: 1 } */
+                case "user-left":
+                    handleUserLeft(msg);
+                    break;
+
                 case "offer":
-                    await handleOffer(msg.offer);
+                    await handleOffer(msg.offer, msg.user);
                     break;
 
                 case "answer":
@@ -316,8 +386,13 @@ function connectWebSocket() {
                     break;
 
                 case "ice":
-                    if (peerConnection)
-                        await peerConnection.addIceCandidate(msg.candidate);
+                    if (peerConnection && msg.candidate) {
+                        try {
+                            await peerConnection.addIceCandidate(msg.candidate);
+                        } catch (e) {
+                            console.error("Error adding ICE candidate:", e);
+                        }
+                    }
                     break;
 
                 case "chat":
@@ -330,6 +405,8 @@ function connectWebSocket() {
 
         ws.onclose = () => console.log("WebSocket closed");
 
+        ws.onerror = (e) => console.error("WebSocket error:", e);
+
     }
     catch (e) {
 
@@ -337,6 +414,53 @@ function connectWebSocket() {
 
     }
 
+}
+
+/* Existing participants I'm joining into */
+function handleRoomInfo(msg) {
+    const users = msg.users || [];
+    setParticipantCount(typeof msg.count === "number" ? msg.count : users.length + 1);
+
+    if (users.length > 0) {
+        remoteUser = users[0];
+        document.getElementById("remoteUserName").textContent = remoteUser;
+        // I am the newcomer; the peer already in the room will initiate the offer
+        // once it receives my "user-joined" event, so I just wait.
+    }
+}
+
+/* Someone else joined after me — I already have media ready, so I initiate. */
+async function handleUserJoined(msg) {
+    setParticipantCount(typeof msg.count === "number" ? msg.count : participantCount + 1);
+
+    if (msg.user) {
+        remoteUser = msg.user;
+        document.getElementById("remoteUserName").textContent = remoteUser;
+        showToast(msg.user + " joined the meeting");
+        addSystemChatMessage(msg.user + " joined the meeting");
+    }
+
+    await createOffer();
+}
+
+function handleUserLeft(msg) {
+    setParticipantCount(typeof msg.count === "number" ? Math.max(1, msg.count) : Math.max(1, participantCount - 1));
+
+    if (msg.user) {
+        showToast(msg.user + " left the meeting");
+        addSystemChatMessage(msg.user + " left the meeting");
+    }
+
+    // Tear down the peer connection so we're ready for the next participant
+    if (peerConnection) {
+        peerConnection.close();
+        peerConnection = null;
+    }
+
+    const remoteVideo = document.getElementById("remoteVideo");
+    remoteVideo.srcObject = null;
+    document.getElementById("remoteUserName").textContent = "Waiting for someone to join…";
+    remoteUser = null;
 }
 
 /* -----------------------------------
@@ -368,11 +492,16 @@ function createPeer() {
 
             ws.send(JSON.stringify({
                 type: "ice",
+                room: ROOM_ID,
                 candidate: event.candidate
             }));
 
         }
 
+    };
+
+    peerConnection.onconnectionstatechange = () => {
+        console.log("Connection state:", peerConnection.connectionState);
     };
 
 }
@@ -387,14 +516,21 @@ async function createOffer() {
 
     ws.send(JSON.stringify({
         type: "offer",
+        room: ROOM_ID,
+        user: USERNAME,
         offer
     }));
 
 }
 
-async function handleOffer(offer) {
+async function handleOffer(offer, fromUser) {
 
     createPeer();
+
+    if (fromUser) {
+        remoteUser = fromUser;
+        document.getElementById("remoteUserName").textContent = fromUser;
+    }
 
     await peerConnection.setRemoteDescription(offer);
 
@@ -404,6 +540,8 @@ async function handleOffer(offer) {
 
     ws.send(JSON.stringify({
         type: "answer",
+        room: ROOM_ID,
+        user: USERNAME,
         answer
     }));
 
@@ -412,7 +550,7 @@ async function handleOffer(offer) {
 /* -----------------------------------
    CHAT
 ----------------------------------- */
-document.getElementById("sendBtn").onclick = () => {
+function sendChatMessage() {
 
     const input = document.getElementById("chatInput");
 
@@ -420,10 +558,12 @@ document.getElementById("sendBtn").onclick = () => {
 
     if (!message) return;
 
-    if (ws) {
+    if (ws && ws.readyState === WebSocket.OPEN) {
 
         ws.send(JSON.stringify({
             type: "chat",
+            room: ROOM_ID,
+            user: USERNAME,
             message
         }));
 
@@ -433,7 +573,16 @@ document.getElementById("sendBtn").onclick = () => {
 
     input.value = "";
 
-};
+}
+
+document.getElementById("sendBtn").onclick = sendChatMessage;
+
+document.getElementById("chatInput").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+        e.preventDefault();
+        sendChatMessage();
+    }
+});
 
 function addChatMessage(user, message) {
 
@@ -449,25 +598,50 @@ function addChatMessage(user, message) {
     });
 
     const msg = document.createElement("div");
-
     msg.className = isMe ? "chat-message me" : "chat-message";
 
-    msg.innerHTML = `
-        <div class="chat-avatar">${initials}</div>
+    const avatar = document.createElement("div");
+    avatar.className = "chat-avatar";
+    avatar.textContent = initials;
 
-        <div class="chat-bubble">
+    const bubble = document.createElement("div");
+    bubble.className = "chat-bubble";
 
-            <div class="chat-user">${user}</div>
+    const userEl = document.createElement("div");
+    userEl.className = "chat-user";
+    userEl.textContent = user;
 
-            <div class="chat-text">${message}</div>
+    const textEl = document.createElement("div");
+    textEl.className = "chat-text";
+    textEl.textContent = message; // textContent avoids any HTML/script injection
 
-            <div class="chat-time">${now}</div>
+    const timeEl = document.createElement("div");
+    timeEl.className = "chat-time";
+    timeEl.textContent = now;
 
-        </div>
-    `;
+    bubble.appendChild(userEl);
+    bubble.appendChild(textEl);
+    bubble.appendChild(timeEl);
+
+    msg.appendChild(avatar);
+    msg.appendChild(bubble);
 
     messages.appendChild(msg);
 
+    messages.scrollTop = messages.scrollHeight;
+}
+
+function addSystemChatMessage(text) {
+    const messages = document.getElementById("messages");
+
+    const msg = document.createElement("div");
+    msg.className = "chat-message system";
+    msg.style.textAlign = "center";
+    msg.style.opacity = "0.7";
+    msg.style.fontSize = "12px";
+    msg.textContent = text;
+
+    messages.appendChild(msg);
     messages.scrollTop = messages.scrollHeight;
 }
 
@@ -480,7 +654,24 @@ function toggleAudio() {
 
     const track = localStream.getAudioTracks()[0];
 
-    if (track) track.enabled = !track.enabled;
+    if (!track) return;
+
+    track.enabled = !track.enabled;
+    isAudioEnabled = track.enabled;
+
+    const btn = document.getElementById("muteAudioBtn");
+    const icon = btn.querySelector(".control-icon");
+    const text = btn.querySelector(".control-text");
+
+    if (isAudioEnabled) {
+        btn.classList.remove("off");
+        icon.textContent = "🎤";
+        text.textContent = "Mic On";
+    } else {
+        btn.classList.add("off");
+        icon.textContent = "🔇";
+        text.textContent = "Muted";
+    }
 
 }
 
@@ -490,35 +681,112 @@ function toggleVideo() {
 
     const track = localStream.getVideoTracks()[0];
 
-    if (track) track.enabled = !track.enabled;
+    if (!track) return;
+
+    track.enabled = !track.enabled;
+    isVideoEnabled = track.enabled;
+
+    const btn = document.getElementById("disableVideoBtn");
+    const icon = btn.querySelector(".control-icon");
+    const text = btn.querySelector(".control-text");
+
+    if (isVideoEnabled) {
+        btn.classList.remove("off");
+        icon.textContent = "📷";
+        text.textContent = "Camera";
+    } else {
+        btn.classList.add("off");
+        icon.textContent = "📷";
+        text.textContent = "Cam Off";
+    }
 
 }
 
-async function startScreenShare() {
+async function toggleScreenShare() {
 
-    if (!peerConnection) return;
+    const btn = document.getElementById("screenShareBtn");
+    const icon = btn.querySelector(".control-icon");
+    const text = btn.querySelector(".control-text");
 
-    const stream = await navigator.mediaDevices.getDisplayMedia({
-        video: true
-    });
+    if (!isScreenSharing) {
 
-    const track = stream.getVideoTracks()[0];
+        try {
 
-    const sender = peerConnection
-        .getSenders()
-        .find(s => s.track && s.track.kind === "video");
+            const displayStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+            const screenTrack = displayStream.getVideoTracks()[0];
 
-    if (sender) {
+            if (peerConnection) {
+                const sender = peerConnection
+                    .getSenders()
+                    .find(s => s.track && s.track.kind === "video");
 
-        sender.replaceTrack(track);
+                if (sender) sender.replaceTrack(screenTrack);
+            }
+
+            // Show my own screen share in the local preview too
+            document.getElementById("localVideo").srcObject = displayStream;
+
+            isScreenSharing = true;
+            btn.classList.add("active-share");
+            icon.textContent = "🟢";
+            text.textContent = "Sharing";
+
+            // When the user stops sharing via the browser's own UI control
+            screenTrack.onended = () => stopScreenShare();
+
+        } catch (err) {
+            console.error("Screen share error:", err);
+        }
+
+    } else {
+
+        stopScreenShare();
 
     }
+
+}
+
+function stopScreenShare() {
+
+    const btn = document.getElementById("screenShareBtn");
+    const icon = btn.querySelector(".control-icon");
+    const text = btn.querySelector(".control-text");
+
+    if (peerConnection && cameraTrack) {
+        const sender = peerConnection
+            .getSenders()
+            .find(s => s.track && s.track.kind === "video");
+
+        if (sender) sender.replaceTrack(cameraTrack);
+    }
+
+    if (localStream) {
+        document.getElementById("localVideo").srcObject = localStream;
+    }
+
+    isScreenSharing = false;
+    btn.classList.remove("active-share");
+    icon.textContent = "🖥️";
+    text.textContent = "Share";
 
 }
 
 function exitMeeting() {
 
     clearInterval(meetingTimerInterval);
+
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+            type: "leave",
+            room: ROOM_ID,
+            user: USERNAME
+        }));
+    }
+
+    if (peerConnection) {
+        peerConnection.close();
+        peerConnection = null;
+    }
 
     if (localStream) {
 
@@ -535,6 +803,43 @@ function exitMeeting() {
     window.location.href = "/home";
 
 }
+
+/* -----------------------------------
+   COPY INVITE
+----------------------------------- */
+document.getElementById("copyRoomBtn").addEventListener("click", async () => {
+
+    const btn = document.getElementById("copyRoomBtn");
+    const inviteLink = window.location.origin + "/room/" + encodeURIComponent(ROOM_ID);
+
+    try {
+
+        await navigator.clipboard.writeText(inviteLink);
+
+    } catch (err) {
+
+        // Fallback for browsers/contexts without clipboard API access
+        const temp = document.createElement("textarea");
+        temp.value = inviteLink;
+        document.body.appendChild(temp);
+        temp.select();
+        document.execCommand("copy");
+        document.body.removeChild(temp);
+
+    }
+
+    const originalText = btn.innerHTML;
+    btn.classList.add("copied");
+    btn.textContent = "✅ Copied!";
+
+    setTimeout(() => {
+        btn.classList.remove("copied");
+        btn.innerHTML = originalText;
+    }, 2000);
+
+    showToast("Invite link copied to clipboard");
+
+});
 
 /* -----------------------------------
    CHAT PANEL
@@ -567,6 +872,12 @@ window.addEventListener("load", async () => {
 
     connectWebSocket();
 
+});
+
+window.addEventListener("beforeunload", () => {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: "leave", room: ROOM_ID, user: USERNAME }));
+    }
 });
 </script>
 

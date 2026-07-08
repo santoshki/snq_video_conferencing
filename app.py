@@ -5,9 +5,6 @@ import time
 
 app = Flask(__name__)
 
-# ------------------------
-# CONFIG
-# ------------------------
 app.secret_key = "your_flask_session_secret"
 
 JWT_SECRET = "super_shared_secret_change_this"
@@ -15,16 +12,13 @@ JWT_ALGO = "HS256"
 JWT_EXP_SECONDS = 3600  # 1 hour
 
 
-# ------------------------
-# LOGIN
-# ------------------------
 @app.route("/snq_login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
         username = request.form.get("username")
         password = request.form.get("password")
 
-        # ⚠️ Replace with DB later
+        # Replace with database authentication later
         if username == "admin" and password == "password":
             session["user"] = username
             return redirect(url_for("home"))
@@ -41,29 +35,35 @@ def index():
     return redirect(url_for("login"))
 
 
-# ------------------------
-# HOME
-# ------------------------
 @app.route("/home", methods=["GET", "POST"])
 def home():
+
     username = session.get("user")
 
     if not username:
         return redirect(url_for("login"))
 
     if request.method == "POST":
+
         action = request.form.get("action")
 
-        # ------------------------
+        # ======================================================
         # CREATE NEW MEETING
-        # ------------------------
+        # ======================================================
         if action == "create_meeting":
 
             meeting_id = request.form.get("meeting_id")
             meeting_title = request.form.get("meeting_title")
 
+            if not meeting_id:
+                return redirect(url_for("home"))
+
+            # Store meeting information
+            session["meeting_id"] = meeting_id
+            session["meeting_title"] = meeting_title.strip() if meeting_title else "Untitled Meeting"
+
             # TODO:
-            # Save meeting_title and meeting_id in database
+            # Save meeting_id + meeting_title in database
 
             return redirect(
                 url_for(
@@ -72,20 +72,29 @@ def home():
                 )
             )
 
-        # ------------------------
+        # ======================================================
         # JOIN EXISTING MEETING
-        # ------------------------
+        # ======================================================
         elif action == "join_meeting":
 
             meeting_id = request.form.get("meeting_id")
-            meeting_name = request.form.get("meeting_name")  # Optional
+            meeting_name = request.form.get("meeting_name")
 
             if not meeting_id:
                 return redirect(url_for("home"))
 
+            session["meeting_id"] = meeting_id
+
+            # If user entered a meeting name, use it.
+            # Otherwise we'll display a default title.
+            session["meeting_title"] = (
+                meeting_name.strip()
+                if meeting_name
+                else "SnQ Meeting"
+            )
+
             # TODO:
-            # Validate meeting exists in DB
-            # meeting_name can be ignored or validated later
+            # Later fetch actual title from DB using meeting_id
 
             return redirect(
                 url_for(
@@ -100,17 +109,13 @@ def home():
     )
 
 
-# ------------------------
-# GENERATE MEETING ID (API)
-# ------------------------
 @app.route("/generate_meeting_id")
 def generate_meeting_id():
 
     if "user" not in session:
         return jsonify({"error": "Unauthorized"}), 401
 
-    # Google Meet style:
-    # abc-def-ghi
+    # Google Meet style meeting id
     meeting_id = "-".join([
         uuid.uuid4().hex[:3],
         uuid.uuid4().hex[3:6],
@@ -122,13 +127,12 @@ def generate_meeting_id():
     })
 
 
-# ------------------------
-# MEETING ROOM
-# ------------------------
 @app.route("/meeting/<room_id>")
 def meeting_room(room_id):
 
     username = session.get("user", "Guest")
+
+    meeting_title = session.get("meeting_title", "SnQ Meeting")
 
     token = jwt.encode(
         {
@@ -143,22 +147,19 @@ def meeting_room(room_id):
     return render_template(
         "room.html",
         room_id=room_id,
+        meeting_title=meeting_title,
         username=username,
         token=token
     )
 
 
-# ------------------------
-# LOGOUT
-# ------------------------
 @app.route("/logout")
 def logout():
+
     session.clear()
+
     return redirect(url_for("login"))
 
 
-# ------------------------
-# MAIN
-# ------------------------
 if __name__ == "__main__":
     app.run(debug=True)
