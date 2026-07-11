@@ -511,14 +511,10 @@ body {
 ================================ */
 
 .dashboard-grid{
-
     display:grid;
-
     grid-template-columns:
         repeat(auto-fit,minmax(340px,1fr));
-
-    gap:22px;
-
+    gap:30px;
 }
 
 /* ===============================
@@ -548,41 +544,28 @@ body {
     box-shadow:0 0 25px rgba(59,130,246,.18);
 
 }
-
 .dashboard-card h3{
-
     color:#38bdf8;
-
-    margin-bottom:18px;
-
-    font-size:20px;
-
+    margin-bottom:28px;
+    margin-top: -5px;
+    font-size:25px;
 }
-
 /* ===============================
    LISTS
 ================================ */
 
 .dashboard-card ul{
-
     list-style:none;
-
 }
 
 .dashboard-card li{
-
     padding:14px 0;
-
     border-bottom:1px solid rgba(255,255,255,.08);
-
     color:#dbeafe;
-
 }
 
 .dashboard-card li:last-child{
-
     border-bottom:none;
-
 }
 
 /* ===============================
@@ -590,13 +573,9 @@ body {
 ================================ */
 
 .stats-grid{
-
     display:grid;
-
     grid-template-columns:repeat(2,1fr);
-
     gap:18px;
-
 }
 
 .stat-box{
@@ -634,35 +613,23 @@ body {
 ================================ */
 
 .meeting-item{
-
     display:flex;
-
     justify-content:space-between;
-
     align-items:center;
-
     padding:14px 0;
-
     border-bottom:1px solid rgba(255,255,255,.08);
-
 }
 
 .meeting-item:last-child{
-
     border-bottom:none;
-
 }
 
 .meeting-title{
-
     font-weight:600;
-
 }
 
 .meeting-time{
-
     color:#38bdf8;
-
     font-size:14px;
 
 }
