@@ -64,7 +64,6 @@
         <div id="remoteEmptyState" class="video-overlay">
             <div class="user-info">
                 <span class="status-dot"></span>
-                <span id="remoteUserName">Waiting for someone to join…</span>
             </div>
             <div class="network-badge">
                 🟢 HD
@@ -151,7 +150,7 @@
             onclick="exitMeeting()"
             title="Leave Meeting">
 
-        <span class="control-icon">📞</span>
+        <span class="control-icon">➡️</span>
         <span class="control-text">Leave</span>
 
     </button>
@@ -809,35 +808,20 @@ function exitMeeting() {
 ----------------------------------- */
 document.getElementById("copyRoomBtn").addEventListener("click", async () => {
 
-    const btn = document.getElementById("copyRoomBtn");
     const inviteLink = window.location.origin + "/room/" + encodeURIComponent(ROOM_ID);
 
     try {
-
         await navigator.clipboard.writeText(inviteLink);
-
     } catch (err) {
-
-        // Fallback for browsers/contexts without clipboard API access
         const temp = document.createElement("textarea");
         temp.value = inviteLink;
         document.body.appendChild(temp);
         temp.select();
         document.execCommand("copy");
         document.body.removeChild(temp);
-
     }
 
-    const originalText = btn.innerHTML;
-    btn.classList.add("copied");
-    btn.textContent = "✅ Copied!";
-
-    setTimeout(() => {
-        btn.classList.remove("copied");
-        btn.innerHTML = originalText;
-    }, 2000);
-
-    showToast("Invite link copied to clipboard");
+    showToast("✅ Link copied successfully");
 
 });
 

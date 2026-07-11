@@ -416,9 +416,7 @@ body{
 
 }
 #exitMeetingBtn{
-
-    background:#dc2626;
-
+    background:#FFFFFF;
 }
 
 #exitMeetingBtn:hover{
@@ -803,4 +801,29 @@ body{
 
     margin-right:420px;
 
+}
+#toastContainer{
+    position:fixed;
+    top:20px;
+    right:20px;
+    z-index:99999;
+}
+
+.snq-toast{
+    background:#16a34a;
+    color:#fff;
+    padding:14px 20px;
+    margin-bottom:10px;
+    border-radius:10px;
+    font-weight:600;
+    box-shadow:0 10px 25px rgba(0,0,0,.25);
+
+    opacity:0;
+    transform:translateX(100%);
+    transition:all .3s ease;
+}
+
+.snq-toast.show{
+    opacity:1;
+    transform:translateX(0);
 }
