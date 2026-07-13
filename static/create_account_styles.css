@@ -1,0 +1,261 @@
+/* ===========================
+   Reset
+=========================== */
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:'Segoe UI',sans-serif;
+}
+
+/* ===========================
+   Background
+=========================== */
+body{
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    background:radial-gradient(circle at top,#0f172a,#020617);
+    overflow:hidden;
+}
+
+/* ===========================
+   Animated Background
+=========================== */
+.wave-bg{
+    position:absolute;
+    width:100%;
+    height:100%;
+    overflow:hidden;
+    top:0;
+    left:0;
+    z-index:0;
+}
+
+.wave-bg span{
+    position:absolute;
+    width:130%;
+    height:130%;
+    top:-15%;
+    left:-15%;
+    background:radial-gradient(circle at 30% 30%,rgba(34,211,238,.18),transparent 60%);
+    animation:waveMove 10s linear infinite;
+}
+
+.wave-bg span:nth-child(2){
+    animation-duration:14s;
+    background:radial-gradient(circle at 70% 70%,rgba(59,130,246,.15),transparent 60%);
+}
+
+.wave-bg span:nth-child(3){
+    animation-duration:18s;
+    background:radial-gradient(circle at 50% 50%,rgba(14,165,233,.12),transparent 60%);
+}
+
+@keyframes waveMove{
+    0%{
+        transform:translate(0,0) rotate(0deg);
+    }
+    50%{
+        transform:translate(50px,-50px) rotate(180deg);
+    }
+    100%{
+        transform:translate(0,0) rotate(360deg);
+    }
+}
+
+/* ===========================
+   Container
+=========================== */
+.login-container{
+    position:relative;
+    z-index:1;
+    width:550px;
+    height:875px;
+    padding:35px;
+    border-radius:18px;
+    background:rgba(15,23,42,.72);
+    backdrop-filter:blur(14px);
+    border:1px solid rgba(0,255,255,.15);
+    box-shadow:0 0 40px rgba(0,255,255,.15);
+    text-align:center;
+    color:#e2e8f0;
+}
+
+/* ===========================
+   Logo
+=========================== */
+.logo-circle{
+    width:70px;
+    height:70px;
+    margin:0 auto 18px;
+    border-radius:50%;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    background:rgba(0,255,255,.08);
+    box-shadow:0 0 20px rgba(0,255,255,.25);
+}
+
+.sync-icon{
+    width:34px;
+    height:34px;
+    stroke:#22d3ee;
+}
+
+/* ===========================
+   Headings
+=========================== */
+h2{
+    color:#f8fafc;
+    margin-bottom:12px;
+    font-size:30px;
+}
+
+.subtitle{
+    color:#94a3b8;
+    font-size:24px;
+    margin-bottom:22px;
+}
+
+/* ===========================
+   Form
+=========================== */
+.login-form{
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+}
+
+/* ===========================
+   Inputs
+=========================== */
+.login-form input[type="text"],
+.login-form input[type="email"],
+.login-form input[type="password"]{
+    width:100%;
+    padding:13px 14px;
+    border-radius:10px;
+    border:1px solid rgba(255,255,255,.08);
+    background:rgba(2,6,23,.6);
+    color:#e2e8f0;
+    outline:none;
+    transition:.3s;
+    font-size:16px;
+}
+
+.login-form input::placeholder{
+    color:#64748b;
+}
+
+.login-form input:focus{
+    border-color:#22d3ee;
+    box-shadow:0 0 10px rgba(34,211,238,.4);
+}
+
+/* ===========================
+   Button
+=========================== */
+.login-form button{
+    width:100%;
+    padding:13px;
+    margin-top:16px;
+    border:none;
+    border-radius:10px;
+    cursor:pointer;
+    font-size:18px;
+    font-weight:700;
+    color:#fff;
+    background:linear-gradient(135deg,#06b6d4,#3b82f6);
+    transition:.3s;
+}
+
+.login-form button:hover{
+    transform:translateY(-2px);
+    box-shadow:0 0 15px rgba(59,130,246,.5);
+}
+
+/* ===========================
+   Links
+=========================== */
+.extra-options{
+    margin-top:20px;
+}
+
+.extra-options a{
+    color:#38bdf8;
+    text-decoration:none;
+    font-size:14px;
+    opacity:.9;
+    transition:.3s;
+}
+
+.extra-options a:hover{
+    opacity:1;
+    color:#7dd3fc;
+}
+
+/* ===========================
+   Error Message
+=========================== */
+.error-message{
+    background:rgba(239,68,68,.12);
+    color:#fecaca;
+    border:1px solid rgba(239,68,68,.35);
+    border-radius:8px;
+    padding:10px;
+    margin-bottom:16px;
+    font-size:13px;
+}
+
+/* ===========================
+   Success Message
+=========================== */
+.success-message{
+    background:rgba(34,197,94,.12);
+    color:#bbf7d0;
+    border:1px solid rgba(34,197,94,.35);
+    border-radius:8px;
+    padding:10px;
+    margin-bottom:16px;
+    font-size:13px;
+}
+
+/* ===========================
+   Responsive
+=========================== */
+@media(max-width:480px){
+    .login-container{
+        width:92%;
+        padding:28px;
+    }
+}k
+
+.form-group{
+    display:flex;
+    flex-direction:column;
+    align-items:flex-start;
+    gap:6px;
+}
+
+.form-group label{
+    font-size:13px;
+    font-weight:600;
+    color:#cbd5e1;
+    margin-left:2px;
+}
+
+.form-group{
+    display:flex;
+    flex-direction:column;
+    align-items:flex-start;
+    gap:6px;
+}
+
+.form-group label{
+    font-size:13px;
+    font-weight:600;
+    color:#cbd5e1;
+    margin-left:2px;
+}

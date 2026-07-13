@@ -4,45 +4,87 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SnQ Login</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='login_style.css') }}">
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='login_style.css') }}">
 </head>
 <body>
+
     <div class="wave-bg">
-    <span></span>
-    <span></span>
-    <span></span>
+        <span></span>
+        <span></span>
+        <span></span>
     </div>
+
     <div class="login-container">
 
-        <!-- 🔵 Circular Static Logo -->
+        <!-- Circular Static Logo -->
         <div class="logo-circle">
-            <!-- Sync SVG Icon -->
             <svg class="sync-icon" viewBox="0 0 24 24" fill="none">
-                <path d="M4 12a8 8 0 0 1 13.66-5.66" stroke="white" stroke-width="2" stroke-linecap="round"/>
-                <polyline points="14 4 18 4 18 8" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M4 12a8 8 0 0 1 13.66-5.66"
+                      stroke="white"
+                      stroke-width="2"
+                      stroke-linecap="round"/>
 
-                <path d="M20 12a8 8 0 0 1-13.66 5.66" stroke="white" stroke-width="2" stroke-linecap="round"/>
-                <polyline points="10 20 6 20 6 16" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <polyline points="14 4 18 4 18 8"
+                          stroke="white"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"/>
+
+                <path d="M20 12a8 8 0 0 1-13.66 5.66"
+                      stroke="white"
+                      stroke-width="2"
+                      stroke-linecap="round"/>
+
+                <polyline points="10 20 6 20 6 16"
+                          stroke="white"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"/>
             </svg>
         </div>
 
         <h2>Welcome to SnQ!</h2>
-        <p class="subtitle">Login/Sign up to continue</p>
+        <p class="subtitle">Login to continue</p>
 
-        <form method="post" class="login-form">
-            <input type="text" name="username" placeholder="Username" required>
-            <input type="password" name="password" placeholder="Password" required>
+        {% if error %}
+            <p class="error-message">{{ error }}</p>
+        {% endif %}
 
-            <button type="submit">Login</button>
+        <form method="POST" action="{{ url_for('login') }}" class="login-form">
+
+            <input
+                type="text"
+                name="username"
+                placeholder="Username"
+                required>
+
+            <input
+                type="password"
+                name="password"
+                placeholder="Password"
+                required>
+
+            <button type="submit">
+                Login
+            </button>
+
         </form>
 
         <div class="extra-options">
-            <a href="/forgot-password">Forgot Password?</a>
 
-            <a href="/create-account" class="create-account-link">
+            <a href="/forgot-password">
+                Forgot Password?
+            </a>
+
+            <a href="{{ url_for('create_account') }}"
+               class="create-account-link">
                 Create Account
             </a>
+
         </div>
+
     </div>
 
 </body>
