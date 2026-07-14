@@ -33,29 +33,20 @@ def create_account():
 
     if request.method == "POST":
 
-        fullname = request.form.get("fullname")
+        first_name = request.form.get("first_name")
+        last_name = request.form.get("last_name")
         email = request.form.get("email")
         username = request.form.get("username")
         password = request.form.get("password")
         confirm_password = request.form.get("confirm_password")
 
-        # Basic validation
         if password != confirm_password:
             return "Passwords do not match.", 400
-
-        # ======================================================
-        # TODO:
-        # Save the user in your database here
-        #
-        # Example:
-        # save_user(fullname, email, username, password)
-        # Password should be hashed before storing.
-        # ======================================================
-
-        # Automatically log the user in
-        session["user"] = username
-
-        return redirect(url_for("home"))
+        if len(password)<8:
+            return "Password must be at least 8 characters.", 400
+        else:
+            session["user"] = username
+            return redirect(url_for("home"))
 
     return render_template("create_account.html")
 

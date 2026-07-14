@@ -58,28 +58,42 @@
 <div class="meeting-stage">
     <!-- Main Remote Video -->
     <div class="remote-video-container">
+
         <video id="remoteVideo"
                autoplay
                playsinline></video>
+
+        <div id="remoteAvatar" class="video-avatar hidden">
+            <span id="remoteInitials">?</span>
+        </div>
+
         <div id="remoteEmptyState" class="video-overlay">
             <div class="user-info">
-                <span class="status-dot"></span>
+                <span id="remoteUserName">Waiting for participant...</span>
             </div>
+
             <div class="network-badge">
                 🟢 HD
             </div>
         </div>
+
     </div>
 
     <div class="local-preview">
+
         <video id="localVideo"
                autoplay
                muted
                playsinline></video>
 
+        <div id="localAvatar" class="video-avatar hidden">
+            <span id="localInitials"></span>
+        </div>
+
         <div class="local-label">
             <span>You ({{ username }})</span>
         </div>
+
     </div>
 </div>
 
@@ -133,15 +147,6 @@
 
         <span class="control-icon">👥</span>
         <span class="control-text">People</span>
-
-    </button>
-
-    <button id="settingsBtn"
-            class="control-btn"
-            title="Settings">
-
-        <span class="control-icon">⚙️</span>
-        <span class="control-text">Settings</span>
 
     </button>
 
@@ -216,6 +221,7 @@ let isVideoEnabled = true;
 let isScreenSharing = false;
 
 let remoteUser = null;        // name of the other participant, once known
+let isRemoteVideoEnabled = true; // whether the peer's camera is currently on
 let participantCount = 1;
 
 const rtcConfig = {
@@ -223,6 +229,23 @@ const rtcConfig = {
         { urls: "stun:stun.l.google.com:19302" }
     ]
 };
+
+/* -----------------------------------
+   INITIALS HELPER
+----------------------------------- */
+function getInitials(name) {
+    if (!name) return "?";
+
+    const parts = name.trim().split(/\s+/).filter(Boolean);
+
+    if (parts.length === 0) return "?";
+
+    if (parts.length === 1) {
+        return parts[0].slice(0, 2).toUpperCase();
+    }
+
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
 
 /* -----------------------------------
    TOASTS / NOTIFICATIONS
@@ -310,6 +333,7 @@ async function initMedia() {
         cameraTrack = localStream.getVideoTracks()[0] || null;
 
         document.getElementById("localVideo").srcObject = localStream;
+        document.getElementById("localInitials").textContent = getInitials(USERNAME);
 
     } catch (err) {
 
@@ -398,6 +422,10 @@ function connectWebSocket() {
                     addChatMessage(msg.user, msg.message);
                     break;
 
+                case "video-toggle":
+                    handleRemoteVideoToggle(msg);
+                    break;
+
             }
 
         };
@@ -423,6 +451,7 @@ function handleRoomInfo(msg) {
     if (users.length > 0) {
         remoteUser = users[0];
         document.getElementById("remoteUserName").textContent = remoteUser;
+        document.getElementById("remoteInitials").textContent = getInitials(remoteUser);
         // I am the newcomer; the peer already in the room will initiate the offer
         // once it receives my "user-joined" event, so I just wait.
     }
@@ -435,6 +464,7 @@ async function handleUserJoined(msg) {
     if (msg.user) {
         remoteUser = msg.user;
         document.getElementById("remoteUserName").textContent = remoteUser;
+        document.getElementById("remoteInitials").textContent = getInitials(remoteUser);
         showToast(msg.user + " joined the meeting");
         addSystemChatMessage(msg.user + " joined the meeting");
     }
@@ -458,8 +488,28 @@ function handleUserLeft(msg) {
 
     const remoteVideo = document.getElementById("remoteVideo");
     remoteVideo.srcObject = null;
+    remoteVideo.classList.remove("hidden");
+    document.getElementById("remoteAvatar").classList.add("hidden");
     document.getElementById("remoteUserName").textContent = "Waiting for someone to join…";
     remoteUser = null;
+    isRemoteVideoEnabled = true;
+}
+
+/* Peer told us they turned their camera on/off */
+function handleRemoteVideoToggle(msg) {
+    const remoteVideo = document.getElementById("remoteVideo");
+    const remoteAvatar = document.getElementById("remoteAvatar");
+
+    isRemoteVideoEnabled = !!msg.enabled;
+
+    if (isRemoteVideoEnabled) {
+        remoteAvatar.classList.add("hidden");
+        remoteVideo.classList.remove("hidden");
+    } else {
+        document.getElementById("remoteInitials").textContent = getInitials(msg.user || remoteUser);
+        remoteAvatar.classList.remove("hidden");
+        remoteVideo.classList.add("hidden");
+    }
 }
 
 /* -----------------------------------
@@ -481,7 +531,15 @@ function createPeer() {
 
     peerConnection.ontrack = (event) => {
 
-        document.getElementById("remoteVideo").srcObject = event.streams[0];
+        const remoteVideo = document.getElementById("remoteVideo");
+        remoteVideo.srcObject = event.streams[0];
+
+        // A real track just arrived — make sure the avatar isn't covering it,
+        // unless the peer has already told us their camera is off.
+        if (isRemoteVideoEnabled) {
+            document.getElementById("remoteAvatar").classList.add("hidden");
+            remoteVideo.classList.remove("hidden");
+        }
 
     };
 
@@ -529,6 +587,7 @@ async function handleOffer(offer, fromUser) {
     if (fromUser) {
         remoteUser = fromUser;
         document.getElementById("remoteUserName").textContent = fromUser;
+        document.getElementById("remoteInitials").textContent = getInitials(fromUser);
     }
 
     await peerConnection.setRemoteDescription(offer);
@@ -689,14 +748,33 @@ function toggleVideo() {
     const icon = btn.querySelector(".control-icon");
     const text = btn.querySelector(".control-text");
 
+    const localVideo = document.getElementById("localVideo");
+    const localAvatar = document.getElementById("localAvatar");
+
     if (isVideoEnabled) {
         btn.classList.remove("off");
         icon.textContent = "📷";
         text.textContent = "Camera";
+
+        localAvatar.classList.add("hidden");
+        localVideo.classList.remove("hidden");
     } else {
         btn.classList.add("off");
         icon.textContent = "📷";
         text.textContent = "Cam Off";
+
+        localAvatar.classList.remove("hidden");
+        localVideo.classList.add("hidden");
+    }
+
+    // Let the other participant know so they can show/hide our avatar too
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+            type: "video-toggle",
+            room: ROOM_ID,
+            user: USERNAME,
+            enabled: isVideoEnabled
+        }));
     }
 
 }

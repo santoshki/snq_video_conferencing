@@ -827,3 +827,31 @@ body{
     opacity:1;
     transform:translateX(0);
 }
+.video-avatar{
+    position:absolute;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:5;
+    background:#111827;
+}
+
+.video-avatar span{
+    width:110px;
+    height:110px;
+    border-radius:50%;
+    background:linear-gradient(135deg,#2563eb,#3b82f6);
+    color:#fff;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:42px;
+    font-weight:700;
+    letter-spacing:2px;
+    user-select:none;
+}
+
+.hidden{
+    display:none;
+}
