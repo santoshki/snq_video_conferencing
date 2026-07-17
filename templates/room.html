@@ -1,947 +1,128 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>SnQ Video Chat</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="{{ url_for('static', filename='room_styles.css') }}">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ meeting_title if meeting_title else 'SnQ Meeting' }} | SnQ</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='room_styles.css') }}">
 </head>
-
 <body>
-<div id="toastContainer"></div>
+  <div class="ambient ambient-one"></div><div class="ambient ambient-two"></div>
+  <div id="toastContainer" aria-live="polite"></div>
+  <main class="meeting-app" id="meetingContainer">
+    <header class="topbar">
+      <div class="brand"><span class="brand-mark">S</span><span>snq<span class="brand-dot">.</span></span></div>
+      <div class="meeting-meta">
+        <div class="title-line"><h1>{{ meeting_title if meeting_title else 'SnQ Meeting' }}</h1><span class="secure-badge">Secure</span></div>
+        <p><span id="roomId">{{ room_id }}</span><button id="copyRoomBtn" class="text-button" title="Copy meeting invite">Copy invite</button></p>
+      </div>
+      <div class="top-actions">
+        <button class="top-action" id="raiseHandBtn" title="Raise hand"><span class="icon">✋</span><span>Raise hand</span></button>
+        <button class="top-action" id="recordBtn" title="Record this meeting"><span class="record-dot"></span><span>Record</span></button>
+        <button class="top-action" id="captionBtn" title="Turn on live captions"><span class="icon">CC</span><span>Subtitles</span></button>
+        <button class="profile-button" id="participantsToggle" title="Participants"><span class="profile-initials">{{ username[:1]|upper }}</span><span class="online-dot"></span></button>
+      </div>
+    </header>
 
-<div class="container" id="meetingContainer">
-    <!-- =========================
-     Meeting Header
-========================= -->
-<div class="meeting-header">
-
-    <div class="meeting-left">
-        <div class="meeting-title">
-            <h2 id="meetingTitle">
-                {{ meeting_title if meeting_title else "SnQ Meeting" }}
-            </h2>
-            <span class="secure-badge">🔒 Secure</span>
-        </div>
-
-        <div class="meeting-room">
-            <span class="label">Room:</span>
-            <span id="roomId">{{ room_id }}</span>
-        </div>
+    <div class="elapsed-area">
+      <div class="elapsed-copy"><span class="live-dot"></span><span id="meetingTimer">00:00</span><span class="elapsed-label">Elapsed</span></div>
+      <div class="progress-track"><span id="meetingProgress"></span></div>
+      <span class="meeting-id-label">Meeting ID: {{ room_id }}</span>
     </div>
 
-    <div class="meeting-center">
-        <div class="meeting-timer">
-            <span class="timer-label">Duration</span>
-            <div id="meetingTimer" class="timer">00:00</div>
+    <section class="meeting-layout">
+      <aside class="control-rail" aria-label="Meeting controls">
+        <button id="muteAudioBtn" class="rail-button" onclick="toggleAudio()" title="Mute microphone"><span class="rail-icon" data-on="🎙" data-off="🔇">🎙</span><span>Mute</span></button>
+        <button id="disableVideoBtn" class="rail-button" onclick="toggleVideo()" title="Turn camera off"><span class="rail-icon" data-on="▣" data-off="▧">▣</span><span>Camera</span></button>
+        <button id="screenShareBtn" class="rail-button" onclick="toggleScreenShare()" title="Share screen"><span class="rail-icon">▤</span><span>Share</span></button>
+        <button id="effectsBtn" class="rail-button" title="Video presentation filters"><span class="rail-icon">✦</span><span>Effects</span></button>
+        <span class="rail-spacer"></span>
+        <button id="chatToggleBtn" class="rail-button" title="Open chat"><span class="rail-icon">◌</span><span>Chat</span></button>
+        <button id="exitMeetingBtn" class="rail-button leave" onclick="exitMeeting()" title="Leave meeting"><span class="rail-icon">↗</span><span>Leave</span></button>
+      </aside>
+
+      <section class="video-area">
+        <article class="video-card remote-card" id="remoteCard">
+          <video id="remoteVideo" autoplay playsinline></video>
+          <div id="remoteAvatar" class="video-avatar hidden"><span id="remoteInitials">?</span></div>
+          <div class="video-empty" id="remoteEmptyState"><div class="empty-orb">⌁</div><p id="remoteUserName">Waiting for someone to join…</p><span>Invite a teammate to start collaborating</span></div>
+          <div class="video-sheen"></div>
+          <div class="video-footer"><div class="speaker-info"><span class="speaker-wave" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span id="remoteLabel">Guest</span><span id="remoteHand" class="hand-indicator hidden">✋</span></div><span class="quality-badge">HD</span></div>
+        </article>
+        <article class="video-card local-card" id="localCard">
+          <video id="localVideo" autoplay muted playsinline></video>
+          <div id="localAvatar" class="video-avatar hidden"><span id="localInitials"></span></div>
+          <div class="video-sheen"></div>
+          <div class="video-footer"><div class="speaker-info"><span class="speaker-wave" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>You · {{ username }}</span><span id="localHand" class="hand-indicator hidden">✋</span></div><span id="localStatus" class="quality-badge">You</span></div>
+        </article>
+        <div id="captions" class="captions hidden" aria-live="polite"></div>
+        <div id="effectsMenu" class="effects-menu hidden"><p>Presentation look</p><button data-filter="natural" class="selected">Natural</button><button data-filter="soft">Soft studio</button><button data-filter="mono">Monochrome</button><button data-filter="warm">Warm glow</button></div>
+      </section>
+
+      <aside id="participantsPanel" class="participants-panel">
+        <div class="panel-heading"><div><span class="eyebrow">IN THE MEETING</span><h2>Participants <b id="participantCount">1</b></h2></div><button id="closeParticipantsBtn" class="close-button" title="Close participants">×</button></div>
+        <div class="participant-list" id="participantList">
+          <div class="participant-row you"><span class="avatar-gradient">{{ username[:1]|upper }}</span><div class="participant-name"><strong>You</strong><small>{{ username }}</small></div><div class="participant-status"><span id="localMicIcon" title="Microphone on">🎙</span><span id="localVideoIcon" title="Camera on">▣</span></div></div>
+          <div class="participant-row" id="remoteParticipant"><span class="avatar-gradient alt" id="remoteParticipantInitial">?</span><div class="participant-name"><strong id="remoteParticipantName">Waiting for guest</strong><small id="remoteParticipantState">Not connected</small></div><div class="participant-status"><span title="Microphone on">🎙</span><span id="remoteVideoIcon" title="Camera on">▣</span></div></div>
         </div>
-    </div>
+        <button id="copyRoomBtnSide" class="invite-button">＋ Invite people</button>
+      </aside>
+    </section>
+  </main>
 
-    <div class="meeting-right">
-
-        <div class="participant-info">
-            👥
-            <span id="participantCount">1</span>
-        </div>
-
-        <button id="copyRoomBtn" class="header-btn">
-            📋 Copy Invite
-        </button>
-
-    </div>
-
-</div>
-
-    <!-- ===================================
-     Video Area
-==================================== -->
-<div class="meeting-stage">
-    <!-- Main Remote Video -->
-    <div class="remote-video-container">
-
-        <video id="remoteVideo"
-               autoplay
-               playsinline></video>
-
-        <div id="remoteAvatar" class="video-avatar hidden">
-            <span id="remoteInitials">?</span>
-        </div>
-
-        <div id="remoteEmptyState" class="video-overlay">
-            <div class="user-info">
-                <span id="remoteUserName">Waiting for participant...</span>
-            </div>
-
-            <div class="network-badge">
-                🟢 HD
-            </div>
-        </div>
-
-    </div>
-
-    <div class="local-preview">
-
-        <video id="localVideo"
-               autoplay
-               muted
-               playsinline></video>
-
-        <div id="localAvatar" class="video-avatar hidden">
-            <span id="localInitials"></span>
-        </div>
-
-        <div class="local-label">
-            <span>You ({{ username }})</span>
-        </div>
-
-    </div>
-</div>
-
-    <!-- ===================================
-     Meeting Control Dock
-==================================== -->
-<div class="meeting-controls">
-
-    <button id="muteAudioBtn"
-            class="control-btn"
-            onclick="toggleAudio()"
-            title="Mute Microphone">
-
-        <span class="control-icon">🎤</span>
-        <span class="control-text">Mic On</span>
-
-    </button>
-
-    <button id="disableVideoBtn"
-            class="control-btn"
-            onclick="toggleVideo()"
-            title="Toggle Camera">
-
-        <span class="control-icon">📷</span>
-        <span class="control-text">Camera</span>
-
-    </button>
-
-    <button id="screenShareBtn"
-            class="control-btn"
-            onclick="toggleScreenShare()"
-            title="Share Screen">
-
-        <span class="control-icon">🖥️</span>
-        <span class="control-text">Share</span>
-
-    </button>
-
-    <button id="chatToggleBtn"
-            class="control-btn"
-            title="Chat">
-
-        <span class="control-icon">💬</span>
-        <span class="control-text">Chat</span>
-
-    </button>
-
-    <button id="participantsBtn"
-            class="control-btn"
-            title="Participants">
-
-        <span class="control-icon">👥</span>
-        <span class="control-text">People</span>
-
-    </button>
-
-    <button id="exitMeetingBtn"
-            class="control-btn danger"
-            onclick="exitMeeting()"
-            title="Leave Meeting">
-
-        <span class="control-icon">➡️</span>
-        <span class="control-text">Leave</span>
-
-    </button>
-
-</div>
-
-    </div> <!-- End .container -->
-
-<!-- ======================================
-     Chat Sidebar
-====================================== -->
-
-<div id="chatPanel" class="chat-panel">
-
-    <div class="chat-header">
-
-        <h3>Meeting Chat</h3>
-
-        <button id="closeChatBtn">
-            ✕
-        </button>
-
-    </div>
-
-    <div id="messages"></div>
-
-    <div class="chat-input-group">
-
-        <input
-            id="chatInput"
-            placeholder="Type a message...">
-
-        <button id="sendBtn">
-            ➤
-        </button>
-
-    </div>
-
-</div>
-
+  <aside id="chatPanel" class="chat-panel" aria-label="Meeting chat">
+    <div class="chat-header"><div><span class="eyebrow">TEAM SPACE</span><h2>Meeting chat</h2></div><button id="closeChatBtn" class="close-button" title="Close chat">×</button></div>
+    <div id="messages" class="messages"><div class="chat-system">Messages are visible to everyone in this meeting.</div></div>
+    <div id="reactionBar" class="reaction-bar hidden"><button data-reaction="👏">👏</button><button data-reaction="👍">👍</button><button data-reaction="🎉">🎉</button><button data-reaction="❤️">❤️</button><button data-reaction="😂">😂</button></div>
+    <div class="chat-composer"><button id="reactionToggle" class="composer-action" title="Send a reaction">☺</button><input id="chatInput" autocomplete="off" placeholder="Write a message…"><button id="sendBtn" class="send-button" title="Send message">➤</button></div>
+  </aside>
+  <div id="reactionStage" class="reaction-stage" aria-live="polite"></div>
 
 <script>
-/* -----------------------------------
-   VARIABLES FROM FLASK
------------------------------------ */
 const ROOM_ID = "{{ room_id }}";
 const USERNAME = "{{ username }}";
 const TOKEN = "{{ token }}";
-
-/* -----------------------------------
-   GLOBALS
------------------------------------ */
-let localStream = null;
-let cameraTrack = null;       // original camera video track (kept aside during screen share)
-let peerConnection = null;
-let ws = null;
-
-let meetingStartTime = null;
-let meetingTimerInterval = null;
-
-let isAudioEnabled = true;
-let isVideoEnabled = true;
-let isScreenSharing = false;
-
-let remoteUser = null;        // name of the other participant, once known
-let isRemoteVideoEnabled = true; // whether the peer's camera is currently on
-let participantCount = 1;
-
-const rtcConfig = {
-    iceServers: [
-        { urls: "stun:stun.l.google.com:19302" }
-    ]
-};
-
-/* -----------------------------------
-   INITIALS HELPER
------------------------------------ */
-function getInitials(name) {
-    if (!name) return "?";
-
-    const parts = name.trim().split(/\s+/).filter(Boolean);
-
-    if (parts.length === 0) return "?";
-
-    if (parts.length === 1) {
-        return parts[0].slice(0, 2).toUpperCase();
-    }
-
-    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-}
-
-/* -----------------------------------
-   TOASTS / NOTIFICATIONS
------------------------------------ */
-function showToast(text) {
-    const container = document.getElementById("toastContainer");
-    const toast = document.createElement("div");
-    toast.className = "snq-toast";
-    toast.textContent = text;
-    container.appendChild(toast);
-
-    requestAnimationFrame(() => toast.classList.add("show"));
-
-    setTimeout(() => {
-        toast.classList.remove("show");
-        setTimeout(() => toast.remove(), 300);
-    }, 3500);
-}
-
-/* -----------------------------------
-   PARTICIPANT COUNT
------------------------------------ */
-function setParticipantCount(count) {
-    participantCount = count;
-    const el = document.getElementById("participantCount");
-    if (el) el.textContent = String(count);
-}
-
-/* -----------------------------------
-   MEETING TIMER
------------------------------------ */
-function startMeetingTimer() {
-
-    if (meetingTimerInterval) return;
-
-    const timer = document.getElementById("meetingTimer");
-
-    if (!timer) {
-        console.error("meetingTimer element not found");
-        return;
-    }
-
-    meetingStartTime = Date.now();
-
-    timer.textContent = "00:00";
-
-    meetingTimerInterval = setInterval(() => {
-
-        const elapsed = Math.floor((Date.now() - meetingStartTime) / 1000);
-
-        const hours = Math.floor(elapsed / 3600);
-        const minutes = Math.floor((elapsed % 3600) / 60);
-        const seconds = elapsed % 60;
-
-        let display = "";
-
-        if (hours > 0) {
-            display += String(hours).padStart(2, "0") + ":";
-        }
-
-        display +=
-            String(minutes).padStart(2, "0") +
-            ":" +
-            String(seconds).padStart(2, "0");
-
-        timer.textContent = display;
-
-    }, 1000);
-
-    console.log("Meeting timer started");
-}
-
-/* -----------------------------------
-   START MEDIA
------------------------------------ */
-async function initMedia() {
-
-    try {
-
-        localStream = await navigator.mediaDevices.getUserMedia({
-            video: true,
-            audio: true
-        });
-
-        cameraTrack = localStream.getVideoTracks()[0] || null;
-
-        document.getElementById("localVideo").srcObject = localStream;
-        document.getElementById("localInitials").textContent = getInitials(USERNAME);
-
-    } catch (err) {
-
-        console.error("Media Error:", err);
-        showToast("Could not access camera/microphone");
-
-    }
-
-}
-
-/* -----------------------------------
-   WEBSOCKET
------------------------------------ */
-function connectWebSocket() {
-
-    try {
-
-        const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-        // NOTE: adjust host/port here to match your signaling server deployment.
-        const wsHost = window.location.hostname || "localhost";
-        ws = new WebSocket(protocol + "://" + wsHost + ":8080/ws?token=" + encodeURIComponent(TOKEN));
-
-        ws.onopen = () => {
-
-            console.log("Connected");
-
-            ws.send(JSON.stringify({
-                type: "join",
-                room: ROOM_ID,
-                user: USERNAME
-            }));
-
-        };
-
-        ws.onmessage = async (event) => {
-
-            let msg;
-            try {
-                msg = JSON.parse(event.data);
-            } catch (e) {
-                console.error("Bad WS message:", event.data);
-                return;
-            }
-
-            switch (msg.type) {
-
-                /* Sent by server right after we join, describing who's
-                   already in the room. Expected shape:
-                   { type: "room-info", users: ["alice"], count: 2 } */
-                case "room-info":
-                    handleRoomInfo(msg);
-                    break;
-
-                /* Sent to everyone already in the room when someone new joins.
-                   Expected shape: { type: "user-joined", user: "bob", count: 2 } */
-                case "user-joined":
-                    await handleUserJoined(msg);
-                    break;
-
-                /* Sent to remaining participants when someone leaves.
-                   Expected shape: { type: "user-left", user: "bob", count: 1 } */
-                case "user-left":
-                    handleUserLeft(msg);
-                    break;
-
-                case "offer":
-                    await handleOffer(msg.offer, msg.user);
-                    break;
-
-                case "answer":
-                    if (peerConnection)
-                        await peerConnection.setRemoteDescription(msg.answer);
-                    break;
-
-                case "ice":
-                    if (peerConnection && msg.candidate) {
-                        try {
-                            await peerConnection.addIceCandidate(msg.candidate);
-                        } catch (e) {
-                            console.error("Error adding ICE candidate:", e);
-                        }
-                    }
-                    break;
-
-                case "chat":
-                    addChatMessage(msg.user, msg.message);
-                    break;
-
-                case "video-toggle":
-                    handleRemoteVideoToggle(msg);
-                    break;
-
-            }
-
-        };
-
-        ws.onclose = () => console.log("WebSocket closed");
-
-        ws.onerror = (e) => console.error("WebSocket error:", e);
-
-    }
-    catch (e) {
-
-        console.error(e);
-
-    }
-
-}
-
-/* Existing participants I'm joining into */
-function handleRoomInfo(msg) {
-    const users = msg.users || [];
-    setParticipantCount(typeof msg.count === "number" ? msg.count : users.length + 1);
-
-    if (users.length > 0) {
-        remoteUser = users[0];
-        document.getElementById("remoteUserName").textContent = remoteUser;
-        document.getElementById("remoteInitials").textContent = getInitials(remoteUser);
-        // I am the newcomer; the peer already in the room will initiate the offer
-        // once it receives my "user-joined" event, so I just wait.
-    }
-}
-
-/* Someone else joined after me — I already have media ready, so I initiate. */
-async function handleUserJoined(msg) {
-    setParticipantCount(typeof msg.count === "number" ? msg.count : participantCount + 1);
-
-    if (msg.user) {
-        remoteUser = msg.user;
-        document.getElementById("remoteUserName").textContent = remoteUser;
-        document.getElementById("remoteInitials").textContent = getInitials(remoteUser);
-        showToast(msg.user + " joined the meeting");
-        addSystemChatMessage(msg.user + " joined the meeting");
-    }
-
-    await createOffer();
-}
-
-function handleUserLeft(msg) {
-    setParticipantCount(typeof msg.count === "number" ? Math.max(1, msg.count) : Math.max(1, participantCount - 1));
-
-    if (msg.user) {
-        showToast(msg.user + " left the meeting");
-        addSystemChatMessage(msg.user + " left the meeting");
-    }
-
-    // Tear down the peer connection so we're ready for the next participant
-    if (peerConnection) {
-        peerConnection.close();
-        peerConnection = null;
-    }
-
-    const remoteVideo = document.getElementById("remoteVideo");
-    remoteVideo.srcObject = null;
-    remoteVideo.classList.remove("hidden");
-    document.getElementById("remoteAvatar").classList.add("hidden");
-    document.getElementById("remoteUserName").textContent = "Waiting for someone to join…";
-    remoteUser = null;
-    isRemoteVideoEnabled = true;
-}
-
-/* Peer told us they turned their camera on/off */
-function handleRemoteVideoToggle(msg) {
-    const remoteVideo = document.getElementById("remoteVideo");
-    const remoteAvatar = document.getElementById("remoteAvatar");
-
-    isRemoteVideoEnabled = !!msg.enabled;
-
-    if (isRemoteVideoEnabled) {
-        remoteAvatar.classList.add("hidden");
-        remoteVideo.classList.remove("hidden");
-    } else {
-        document.getElementById("remoteInitials").textContent = getInitials(msg.user || remoteUser);
-        remoteAvatar.classList.remove("hidden");
-        remoteVideo.classList.add("hidden");
-    }
-}
-
-/* -----------------------------------
-   WEBRTC
------------------------------------ */
-function createPeer() {
-
-    if (peerConnection) return;
-
-    peerConnection = new RTCPeerConnection(rtcConfig);
-
-    if (localStream) {
-
-        localStream.getTracks().forEach(track => {
-            peerConnection.addTrack(track, localStream);
-        });
-
-    }
-
-    peerConnection.ontrack = (event) => {
-
-        const remoteVideo = document.getElementById("remoteVideo");
-        remoteVideo.srcObject = event.streams[0];
-
-        // A real track just arrived — make sure the avatar isn't covering it,
-        // unless the peer has already told us their camera is off.
-        if (isRemoteVideoEnabled) {
-            document.getElementById("remoteAvatar").classList.add("hidden");
-            remoteVideo.classList.remove("hidden");
-        }
-
-    };
-
-    peerConnection.onicecandidate = (event) => {
-
-        if (event.candidate && ws) {
-
-            ws.send(JSON.stringify({
-                type: "ice",
-                room: ROOM_ID,
-                candidate: event.candidate
-            }));
-
-        }
-
-    };
-
-    peerConnection.onconnectionstatechange = () => {
-        console.log("Connection state:", peerConnection.connectionState);
-    };
-
-}
-
-async function createOffer() {
-
-    createPeer();
-
-    const offer = await peerConnection.createOffer();
-
-    await peerConnection.setLocalDescription(offer);
-
-    ws.send(JSON.stringify({
-        type: "offer",
-        room: ROOM_ID,
-        user: USERNAME,
-        offer
-    }));
-
-}
-
-async function handleOffer(offer, fromUser) {
-
-    createPeer();
-
-    if (fromUser) {
-        remoteUser = fromUser;
-        document.getElementById("remoteUserName").textContent = fromUser;
-        document.getElementById("remoteInitials").textContent = getInitials(fromUser);
-    }
-
-    await peerConnection.setRemoteDescription(offer);
-
-    const answer = await peerConnection.createAnswer();
-
-    await peerConnection.setLocalDescription(answer);
-
-    ws.send(JSON.stringify({
-        type: "answer",
-        room: ROOM_ID,
-        user: USERNAME,
-        answer
-    }));
-
-}
-
-/* -----------------------------------
-   CHAT
------------------------------------ */
-function sendChatMessage() {
-
-    const input = document.getElementById("chatInput");
-
-    const message = input.value.trim();
-
-    if (!message) return;
-
-    if (ws && ws.readyState === WebSocket.OPEN) {
-
-        ws.send(JSON.stringify({
-            type: "chat",
-            room: ROOM_ID,
-            user: USERNAME,
-            message
-        }));
-
-    }
-
-    addChatMessage("Me", message);
-
-    input.value = "";
-
-}
-
-document.getElementById("sendBtn").onclick = sendChatMessage;
-
-document.getElementById("chatInput").addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-        e.preventDefault();
-        sendChatMessage();
-    }
-});
-
-function addChatMessage(user, message) {
-
-    const messages = document.getElementById("messages");
-
-    const isMe = user === "Me";
-
-    const initials = user.charAt(0).toUpperCase();
-
-    const now = new Date().toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit"
-    });
-
-    const msg = document.createElement("div");
-    msg.className = isMe ? "chat-message me" : "chat-message";
-
-    const avatar = document.createElement("div");
-    avatar.className = "chat-avatar";
-    avatar.textContent = initials;
-
-    const bubble = document.createElement("div");
-    bubble.className = "chat-bubble";
-
-    const userEl = document.createElement("div");
-    userEl.className = "chat-user";
-    userEl.textContent = user;
-
-    const textEl = document.createElement("div");
-    textEl.className = "chat-text";
-    textEl.textContent = message; // textContent avoids any HTML/script injection
-
-    const timeEl = document.createElement("div");
-    timeEl.className = "chat-time";
-    timeEl.textContent = now;
-
-    bubble.appendChild(userEl);
-    bubble.appendChild(textEl);
-    bubble.appendChild(timeEl);
-
-    msg.appendChild(avatar);
-    msg.appendChild(bubble);
-
-    messages.appendChild(msg);
-
-    messages.scrollTop = messages.scrollHeight;
-}
-
-function addSystemChatMessage(text) {
-    const messages = document.getElementById("messages");
-
-    const msg = document.createElement("div");
-    msg.className = "chat-message system";
-    msg.style.textAlign = "center";
-    msg.style.opacity = "0.7";
-    msg.style.fontSize = "12px";
-    msg.textContent = text;
-
-    messages.appendChild(msg);
-    messages.scrollTop = messages.scrollHeight;
-}
-
-/* -----------------------------------
-   CONTROLS
------------------------------------ */
-function toggleAudio() {
-
-    if (!localStream) return;
-
-    const track = localStream.getAudioTracks()[0];
-
-    if (!track) return;
-
-    track.enabled = !track.enabled;
-    isAudioEnabled = track.enabled;
-
-    const btn = document.getElementById("muteAudioBtn");
-    const icon = btn.querySelector(".control-icon");
-    const text = btn.querySelector(".control-text");
-
-    if (isAudioEnabled) {
-        btn.classList.remove("off");
-        icon.textContent = "🎤";
-        text.textContent = "Mic On";
-    } else {
-        btn.classList.add("off");
-        icon.textContent = "🔇";
-        text.textContent = "Muted";
-    }
-
-}
-
-function toggleVideo() {
-
-    if (!localStream) return;
-
-    const track = localStream.getVideoTracks()[0];
-
-    if (!track) return;
-
-    track.enabled = !track.enabled;
-    isVideoEnabled = track.enabled;
-
-    const btn = document.getElementById("disableVideoBtn");
-    const icon = btn.querySelector(".control-icon");
-    const text = btn.querySelector(".control-text");
-
-    const localVideo = document.getElementById("localVideo");
-    const localAvatar = document.getElementById("localAvatar");
-
-    if (isVideoEnabled) {
-        btn.classList.remove("off");
-        icon.textContent = "📷";
-        text.textContent = "Camera";
-
-        localAvatar.classList.add("hidden");
-        localVideo.classList.remove("hidden");
-    } else {
-        btn.classList.add("off");
-        icon.textContent = "📷";
-        text.textContent = "Cam Off";
-
-        localAvatar.classList.remove("hidden");
-        localVideo.classList.add("hidden");
-    }
-
-    // Let the other participant know so they can show/hide our avatar too
-    if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({
-            type: "video-toggle",
-            room: ROOM_ID,
-            user: USERNAME,
-            enabled: isVideoEnabled
-        }));
-    }
-
-}
-
-async function toggleScreenShare() {
-
-    const btn = document.getElementById("screenShareBtn");
-    const icon = btn.querySelector(".control-icon");
-    const text = btn.querySelector(".control-text");
-
-    if (!isScreenSharing) {
-
-        try {
-
-            const displayStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-            const screenTrack = displayStream.getVideoTracks()[0];
-
-            if (peerConnection) {
-                const sender = peerConnection
-                    .getSenders()
-                    .find(s => s.track && s.track.kind === "video");
-
-                if (sender) sender.replaceTrack(screenTrack);
-            }
-
-            // Show my own screen share in the local preview too
-            document.getElementById("localVideo").srcObject = displayStream;
-
-            isScreenSharing = true;
-            btn.classList.add("active-share");
-            icon.textContent = "🟢";
-            text.textContent = "Sharing";
-
-            // When the user stops sharing via the browser's own UI control
-            screenTrack.onended = () => stopScreenShare();
-
-        } catch (err) {
-            console.error("Screen share error:", err);
-        }
-
-    } else {
-
-        stopScreenShare();
-
-    }
-
-}
-
-function stopScreenShare() {
-
-    const btn = document.getElementById("screenShareBtn");
-    const icon = btn.querySelector(".control-icon");
-    const text = btn.querySelector(".control-text");
-
-    if (peerConnection && cameraTrack) {
-        const sender = peerConnection
-            .getSenders()
-            .find(s => s.track && s.track.kind === "video");
-
-        if (sender) sender.replaceTrack(cameraTrack);
-    }
-
-    if (localStream) {
-        document.getElementById("localVideo").srcObject = localStream;
-    }
-
-    isScreenSharing = false;
-    btn.classList.remove("active-share");
-    icon.textContent = "🖥️";
-    text.textContent = "Share";
-
-}
-
-function exitMeeting() {
-
-    clearInterval(meetingTimerInterval);
-
-    if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({
-            type: "leave",
-            room: ROOM_ID,
-            user: USERNAME
-        }));
-    }
-
-    if (peerConnection) {
-        peerConnection.close();
-        peerConnection = null;
-    }
-
-    if (localStream) {
-
-        localStream.getTracks().forEach(t => t.stop());
-
-    }
-
-    if (ws) {
-
-        ws.close();
-
-    }
-
-    window.location.href = "/home";
-
-}
-
-/* -----------------------------------
-   COPY INVITE
------------------------------------ */
-document.getElementById("copyRoomBtn").addEventListener("click", async () => {
-
-    const inviteLink = window.location.origin + "/room/" + encodeURIComponent(ROOM_ID);
-
-    try {
-        await navigator.clipboard.writeText(inviteLink);
-    } catch (err) {
-        const temp = document.createElement("textarea");
-        temp.value = inviteLink;
-        document.body.appendChild(temp);
-        temp.select();
-        document.execCommand("copy");
-        document.body.removeChild(temp);
-    }
-
-    showToast("✅ Link copied successfully");
-
-});
-
-/* -----------------------------------
-   CHAT PANEL
------------------------------------ */
-const chatPanel = document.getElementById("chatPanel");
-const meetingContainer = document.getElementById("meetingContainer");
-
-document.getElementById("chatToggleBtn").onclick = () => {
-
-    chatPanel.classList.add("open");
-    meetingContainer.classList.add("chat-open");
-
-};
-
-document.getElementById("closeChatBtn").onclick = () => {
-
-    chatPanel.classList.remove("open");
-    meetingContainer.classList.remove("chat-open");
-
-};
-
-/* -----------------------------------
-   INIT
------------------------------------ */
-window.addEventListener("load", async () => {
-
-    startMeetingTimer();
-
-    await initMedia();
-
-    connectWebSocket();
-
-});
-
-window.addEventListener("beforeunload", () => {
-    if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ type: "leave", room: ROOM_ID, user: USERNAME }));
-    }
-});
+let localStream = null, cameraTrack = null, peerConnection = null, ws = null, remoteUser = null;
+let isAudioEnabled = true, isVideoEnabled = true, isScreenSharing = false, isRemoteVideoEnabled = true, participantCount = 1;
+let meetingStartTime = null, meetingTimerInterval = null, raisedHand = false, isRecording = false, recorder = null, recordedChunks = [], recognition = null;
+let audioContexts = [];
+const rtcConfig = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
+const $ = id => document.getElementById(id);
+function getInitials(name) { const p = (name || "?").trim().split(/\s+/); return p.length > 1 ? (p[0][0] + p[p.length - 1][0]).toUpperCase() : p[0].slice(0, 2).toUpperCase(); }
+function showToast(text) { const t = document.createElement("div"); t.className = "snq-toast"; t.textContent = text; $("toastContainer").append(t); requestAnimationFrame(() => t.classList.add("show")); setTimeout(() => { t.classList.remove("show"); setTimeout(() => t.remove(), 300); }, 3000); }
+function sendSignal(type, extra = {}) { if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type, room: ROOM_ID, user: USERNAME, ...extra })); }
+function setParticipantCount(count) { participantCount = Math.max(1, count); $("participantCount").textContent = participantCount; }
+function updateRemotePerson(name, state = "Connected") { remoteUser = name || null; $("remoteUserName").textContent = name || "Waiting for someone to join…"; $("remoteLabel").textContent = name || "Guest"; $("remoteInitials").textContent = getInitials(name); $("remoteParticipantInitial").textContent = getInitials(name); $("remoteParticipantName").textContent = name || "Waiting for guest"; $("remoteParticipantState").textContent = state; }
+function startMeetingTimer() { meetingStartTime = Date.now(); meetingTimerInterval = setInterval(() => { const elapsed = Math.floor((Date.now() - meetingStartTime) / 1000); const h = Math.floor(elapsed / 3600), m = Math.floor(elapsed % 3600 / 60), s = elapsed % 60; $("meetingTimer").textContent = (h ? String(h).padStart(2, "0") + ":" : "") + String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0"); $("meetingProgress").style.width = Math.min(100, (elapsed / 3600) * 100) + "%"; }, 1000); }
+async function initMedia() { try { localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true }); cameraTrack = localStream.getVideoTracks()[0] || null; $("localVideo").srcObject = localStream; $("localInitials").textContent = getInitials(USERNAME); watchSpeaking(localStream, $("localCard")); } catch (err) { console.error(err); showToast("Camera or microphone permission was not granted."); $("localAvatar").classList.remove("hidden"); } }
+function watchSpeaking(stream, card) { if (!stream || !stream.getAudioTracks().length) return; try { const context = new AudioContext(); const source = context.createMediaStreamSource(stream); const analyser = context.createAnalyser(); analyser.fftSize = 256; source.connect(analyser); const values = new Uint8Array(analyser.frequencyBinCount); const detect = () => { analyser.getByteFrequencyData(values); const level = values.reduce((sum, v) => sum + v, 0) / values.length; card.classList.toggle("is-speaking", level > 16); requestAnimationFrame(detect); }; detect(); audioContexts.push(context); } catch (e) { console.debug("Speaker indicator unavailable", e); } }
+function connectWebSocket() { try { const protocol = location.protocol === "https:" ? "wss" : "ws"; ws = new WebSocket(protocol + "://" + (location.hostname || "localhost") + ":8080/ws?token=" + encodeURIComponent(TOKEN)); ws.onopen = () => sendSignal("join"); ws.onmessage = async event => { let msg; try { msg = JSON.parse(event.data); } catch { return; } switch (msg.type) { case "room-info": handleRoomInfo(msg); break; case "user-joined": await handleUserJoined(msg); break; case "user-left": handleUserLeft(msg); break; case "offer": await handleOffer(msg.offer, msg.user); break; case "answer": if (peerConnection) await peerConnection.setRemoteDescription(msg.answer); break; case "ice": if (peerConnection && msg.candidate) try { await peerConnection.addIceCandidate(msg.candidate); } catch (e) { console.error(e); } break; case "chat": addChatMessage(msg.user, msg.message); break; case "video-toggle": handleRemoteVideoToggle(msg); break; case "hand-raise": showRemoteHand(!!msg.raised); break; case "reaction": showReaction(msg.reaction, msg.user); break; } }; ws.onerror = () => showToast("Signalling service is unavailable."); } catch (e) { console.error(e); } }
+function handleRoomInfo(msg) { const users = msg.users || []; setParticipantCount(typeof msg.count === "number" ? msg.count : users.length + 1); if (users.length) updateRemotePerson(users[0]); }
+async function handleUserJoined(msg) { setParticipantCount(typeof msg.count === "number" ? msg.count : participantCount + 1); if (msg.user) { updateRemotePerson(msg.user); showToast(msg.user + " joined the meeting"); addSystemChatMessage(msg.user + " joined the meeting"); } await createOffer(); }
+function handleUserLeft(msg) { setParticipantCount(typeof msg.count === "number" ? msg.count : participantCount - 1); if (msg.user) { showToast(msg.user + " left the meeting"); addSystemChatMessage(msg.user + " left the meeting"); } if (peerConnection) { peerConnection.close(); peerConnection = null; } $("remoteVideo").srcObject = null; $("remoteAvatar").classList.add("hidden"); $("remoteEmptyState").classList.remove("hidden"); $("remoteCard").classList.remove("is-speaking"); updateRemotePerson(null, "Not connected"); }
+function handleRemoteVideoToggle(msg) { isRemoteVideoEnabled = !!msg.enabled; $("remoteVideoIcon").textContent = isRemoteVideoEnabled ? "▣" : "▧"; $("remoteAvatar").classList.toggle("hidden", isRemoteVideoEnabled); $("remoteVideo").classList.toggle("hidden", !isRemoteVideoEnabled); }
+function createPeer() { if (peerConnection) return; peerConnection = new RTCPeerConnection(rtcConfig); if (localStream) localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream)); peerConnection.ontrack = event => { $("remoteVideo").srcObject = event.streams[0]; $("remoteEmptyState").classList.add("hidden"); if (isRemoteVideoEnabled) { $("remoteAvatar").classList.add("hidden"); $("remoteVideo").classList.remove("hidden"); } watchSpeaking(event.streams[0], $("remoteCard")); }; peerConnection.onicecandidate = event => { if (event.candidate) sendSignal("ice", { candidate: event.candidate }); }; }
+async function createOffer() { createPeer(); const offer = await peerConnection.createOffer(); await peerConnection.setLocalDescription(offer); sendSignal("offer", { offer }); }
+async function handleOffer(offer, fromUser) { createPeer(); if (fromUser) updateRemotePerson(fromUser); await peerConnection.setRemoteDescription(offer); const answer = await peerConnection.createAnswer(); await peerConnection.setLocalDescription(answer); sendSignal("answer", { answer }); }
+function toggleAudio() { if (!localStream) return; const track = localStream.getAudioTracks()[0]; if (!track) return; track.enabled = !track.enabled; isAudioEnabled = track.enabled; $("muteAudioBtn").classList.toggle("off", !isAudioEnabled); $("muteAudioBtn").querySelector(".rail-icon").textContent = isAudioEnabled ? "🎙" : "🔇"; $("muteAudioBtn").querySelector("span:last-child").textContent = isAudioEnabled ? "Mute" : "Unmute"; $("localMicIcon").textContent = isAudioEnabled ? "🎙" : "🔇"; }
+function toggleVideo() { if (!localStream) return; const track = localStream.getVideoTracks()[0]; if (!track) return; track.enabled = !track.enabled; isVideoEnabled = track.enabled; $("disableVideoBtn").classList.toggle("off", !isVideoEnabled); $("disableVideoBtn").querySelector(".rail-icon").textContent = isVideoEnabled ? "▣" : "▧"; $("disableVideoBtn").querySelector("span:last-child").textContent = isVideoEnabled ? "Camera" : "Cam off"; $("localVideoIcon").textContent = isVideoEnabled ? "▣" : "▧"; $("localAvatar").classList.toggle("hidden", isVideoEnabled); $("localVideo").classList.toggle("hidden", !isVideoEnabled); sendSignal("video-toggle", { enabled: isVideoEnabled }); }
+async function toggleScreenShare() { if (!isScreenSharing) { try { const display = await navigator.mediaDevices.getDisplayMedia({ video: true }); const screenTrack = display.getVideoTracks()[0]; const sender = peerConnection && peerConnection.getSenders().find(s => s.track && s.track.kind === "video"); if (sender) sender.replaceTrack(screenTrack); $("localVideo").srcObject = display; isScreenSharing = true; $("screenShareBtn").classList.add("active"); $("screenShareBtn").querySelector("span:last-child").textContent = "Sharing"; screenTrack.onended = stopScreenShare; } catch (e) { console.error(e); } } else stopScreenShare(); }
+function stopScreenShare() { const sender = peerConnection && peerConnection.getSenders().find(s => s.track && s.track.kind === "video"); if (sender && cameraTrack) sender.replaceTrack(cameraTrack); if (localStream) $("localVideo").srcObject = localStream; isScreenSharing = false; $("screenShareBtn").classList.remove("active"); $("screenShareBtn").querySelector("span:last-child").textContent = "Share"; }
+function sendChatMessage() { const input = $("chatInput"), message = input.value.trim(); if (!message) return; sendSignal("chat", { message }); addChatMessage("Me", message); input.value = ""; }
+function addChatMessage(user, message) { const isMe = user === "Me"; const msg = document.createElement("div"); msg.className = "chat-message" + (isMe ? " me" : ""); msg.innerHTML = `<span class="chat-avatar">${getInitials(isMe ? USERNAME : user)}</span><div class="chat-bubble"><strong>${isMe ? "You" : safeText(user)}</strong><p>${safeText(message)}</p><small>${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</small></div>`; $("messages").append(msg); $("messages").scrollTop = $("messages").scrollHeight; }
+function safeText(text) { const div = document.createElement("div"); div.textContent = text; return div.innerHTML; }
+function addSystemChatMessage(text) { const item = document.createElement("div"); item.className = "chat-system"; item.textContent = text; $("messages").append(item); }
+function showRemoteHand(show) { $("remoteHand").classList.toggle("hidden", !show); if (show) showToast((remoteUser || "A participant") + " raised a hand"); }
+function toggleHand() { raisedHand = !raisedHand; $("localHand").classList.toggle("hidden", !raisedHand); $("raiseHandBtn").classList.toggle("active", raisedHand); $("raiseHandBtn").lastElementChild.textContent = raisedHand ? "Lower hand" : "Raise hand"; sendSignal("hand-raise", { raised: raisedHand }); }
+function showReaction(reaction, user = USERNAME) { const item = document.createElement("span"); item.className = "floating-reaction"; item.textContent = reaction; item.title = user + " reacted " + reaction; $("reactionStage").append(item); setTimeout(() => item.remove(), 2200); }
+function sendReaction(reaction) { showReaction(reaction); sendSignal("reaction", { reaction }); $("reactionBar").classList.add("hidden"); }
+function setFilter(filter) { document.body.dataset.filter = filter; document.querySelectorAll("[data-filter]").forEach(b => b.classList.toggle("selected", b.dataset.filter === filter)); $("effectsMenu").classList.add("hidden"); showToast(filter === "natural" ? "Natural presentation selected" : filter + " presentation filter applied"); }
+function toggleRecording() { if (!isRecording) { if (!localStream || !window.MediaRecorder) { showToast("Recording is not supported by this browser."); return; } recordedChunks = []; recorder = new MediaRecorder(localStream); recorder.ondataavailable = e => e.data.size && recordedChunks.push(e.data); recorder.onstop = () => { const url = URL.createObjectURL(new Blob(recordedChunks, { type: recorder.mimeType })); const a = document.createElement("a"); a.href = url; a.download = `snq-${ROOM_ID}-${Date.now()}.webm`; a.click(); URL.revokeObjectURL(url); }; recorder.start(); isRecording = true; $("recordBtn").classList.add("recording"); $("recordBtn").lastElementChild.textContent = "Stop recording"; showToast("Recording started (your camera and mic)"); } else { recorder.stop(); isRecording = false; $("recordBtn").classList.remove("recording"); $("recordBtn").lastElementChild.textContent = "Record"; showToast("Recording saved to your downloads"); } }
+function toggleCaptions() { if (recognition) { recognition.stop(); recognition = null; $("captions").classList.add("hidden"); $("captionBtn").classList.remove("active"); $("captionBtn").lastElementChild.textContent = "Subtitles"; return; } const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition; if (!SpeechRecognition) { showToast("Live subtitles are not supported by this browser."); return; } recognition = new SpeechRecognition(); recognition.continuous = true; recognition.interimResults = true; recognition.onresult = event => { let text = ""; for (let i = event.resultIndex; i < event.results.length; i++) text += event.results[i][0].transcript; $("captions").textContent = text; $("captions").classList.toggle("hidden", !text); }; recognition.onend = () => { if (recognition) recognition.start(); }; recognition.start(); $("captionBtn").classList.add("active"); $("captionBtn").lastElementChild.textContent = "Captions on"; }
+function copyInvite() { const link = location.origin + "/meeting/" + encodeURIComponent(ROOM_ID); navigator.clipboard?.writeText(link).catch(() => { const input = document.createElement("textarea"); input.value = link; document.body.append(input); input.select(); document.execCommand("copy"); input.remove(); }); showToast("Meeting link copied"); }
+function exitMeeting() { clearInterval(meetingTimerInterval); sendSignal("leave"); if (peerConnection) peerConnection.close(); if (localStream) localStream.getTracks().forEach(track => track.stop()); audioContexts.forEach(context => context.close()); if (ws) ws.close(); location.href = "/home"; }
+$("sendBtn").onclick = sendChatMessage; $("chatInput").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); sendChatMessage(); } }); $("chatToggleBtn").onclick = () => $("chatPanel").classList.add("open"); $("closeChatBtn").onclick = () => $("chatPanel").classList.remove("open"); $("participantsToggle").onclick = () => $("participantsPanel").classList.toggle("compact-open"); $("closeParticipantsBtn").onclick = () => $("participantsPanel").classList.remove("compact-open"); $("copyRoomBtn").onclick = copyInvite; $("copyRoomBtnSide").onclick = copyInvite; $("raiseHandBtn").onclick = toggleHand; $("recordBtn").onclick = toggleRecording; $("captionBtn").onclick = toggleCaptions; $("reactionToggle").onclick = () => $("reactionBar").classList.toggle("hidden"); document.querySelectorAll("[data-reaction]").forEach(b => b.onclick = () => sendReaction(b.dataset.reaction)); $("effectsBtn").onclick = () => $("effectsMenu").classList.toggle("hidden"); document.querySelectorAll("[data-filter]").forEach(b => b.onclick = () => setFilter(b.dataset.filter));
+window.addEventListener("load", async () => { startMeetingTimer(); await initMedia(); connectWebSocket(); }); window.addEventListener("beforeunload", () => sendSignal("leave"));
 </script>
-
 </body>
 </html>
