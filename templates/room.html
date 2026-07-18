@@ -88,16 +88,23 @@
 const ROOM_ID = "{{ room_id }}";
 const USERNAME = "{{ username }}";
 const TOKEN = "{{ token }}";
+// Unique per browser-tab id. This (not USERNAME) is what identifies a
+// participant's connection, so two people with the same display name -
+// or the same person open in two tabs - each get their own slot in the
+// room instead of colliding.
+const CONNECTION_ID = "{{ connection_id }}";
 let localStream = null, cameraTrack = null, ws = null;
 let isAudioEnabled = true, isVideoEnabled = true, isScreenSharing = false, participantCount = 1;
 let meetingStartTime = null, meetingTimerInterval = null, raisedHand = false, isRecording = false, recorder = null, recordedChunks = [], recognition = null;
 let audioContexts = [], activeSpeaker = "local", lastStageSwitch = 0;
 let screenShareSpeaker = null;
 
-// Track multiple WebRTC PeerConnections and streams by Username
+// Track multiple WebRTC PeerConnections and streams by connection id (cid)
 const peers = {};
+// cid -> display name, so UI code that only has a cid can still show a name
+const participantNames = {};
 
-const rtcConfig = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
+const rtcConfig = { iceServers: JSON.parse('{{ ice_servers_json | safe }}') };
 const $ = id => document.getElementById(id);
 function getInitials(name) { const p = (name || "?").trim().split(/\s+/); return p.length > 1 ? (p[0][0] + p[p.length - 1][0]).toUpperCase() : p[0].slice(0, 2).toUpperCase(); }
 function showToast(text) { const t = document.createElement("div"); t.className = "snq-toast"; t.textContent = text; $("toastContainer").append(t); requestAnimationFrame(() => t.classList.add("show")); setTimeout(() => { t.classList.remove("show"); setTimeout(() => t.remove(), 300); }, 3000); }
@@ -106,8 +113,10 @@ function setParticipantCount(count) { participantCount = Math.max(1, count); $("
 
 // --- DYNAMIC DOM GENERATION FOR MULTIPLE PARTICIPANTS ---
 
-function createParticipantUI(name) {
-  if ($(`card-${name}`)) return;
+function createParticipantUI(cid, name) {
+  if ($(`card-${cid}`)) return;
+
+  participantNames[cid] = name;
 
   // 1. Hide the empty placeholder state
   $("remoteEmptyState").classList.add("hidden");
@@ -115,16 +124,16 @@ function createParticipantUI(name) {
   // 2. Generate the Video Grid Card
   const card = document.createElement("article");
   card.className = "video-card remote-card";
-  card.id = `card-${name}`;
+  card.id = `card-${cid}`;
   card.innerHTML = `
-    <video id="video-${name}" autoplay playsinline></video>
-    <div id="avatar-${name}" class="video-avatar hidden"><span>${getInitials(name)}</span></div>
+    <video id="video-${cid}" autoplay playsinline></video>
+    <div id="avatar-${cid}" class="video-avatar hidden"><span>${getInitials(name)}</span></div>
     <div class="video-sheen"></div>
     <div class="video-footer">
       <div class="speaker-info">
         <span class="speaker-wave" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
-        <span>${name}</span>
-        <span id="hand-${name}" class="hand-indicator hidden">✋</span>
+        <span>${safeText(name)}</span>
+        <span id="hand-${cid}" class="hand-indicator hidden">✋</span>
       </div>
       <span class="quality-badge">HD</span>
     </div>
@@ -134,21 +143,22 @@ function createParticipantUI(name) {
   // 3. Generate Right Sidebar Roster Row
   const row = document.createElement("div");
   row.className = "participant-row";
-  row.id = `row-${name}`;
+  row.id = `row-${cid}`;
   row.innerHTML = `
     <span class="avatar-gradient alt">${getInitials(name)}</span>
-    <div class="participant-name"><strong>${name}</strong><small id="state-${name}">Connected</small></div>
+    <div class="participant-name"><strong>${safeText(name)}</strong><small id="state-${cid}">Connected</small></div>
     <div class="participant-status">
-      <span id="mic-${name}" title="Microphone on">🎙</span>
-      <span id="vid-${name}" title="Camera on">▣</span>
+      <span id="mic-${cid}" title="Microphone on">🎙</span>
+      <span id="vid-${cid}" title="Camera on">▣</span>
     </div>
   `;
   $("participantList").appendChild(row);
 }
 
-function removeParticipantUI(name) {
-  $(`card-${name}`)?.remove();
-  $(`row-${name}`)?.remove();
+function removeParticipantUI(cid) {
+  $(`card-${cid}`)?.remove();
+  $(`row-${cid}`)?.remove();
+  delete participantNames[cid];
 
   // If no one is left, bring back the empty state banner
   if (Object.keys(peers).length === 0) {
@@ -176,92 +186,101 @@ async function initMedia() { try { localStream = await navigator.mediaDevices.ge
 
 function watchSpeaking(stream, card, speakerId) { if (!stream || !stream.getAudioTracks().length) return; try { const context = new AudioContext(); const source = context.createMediaStreamSource(stream); const analyser = context.createAnalyser(); analyser.fftSize = 256; source.connect(analyser); const values = new Uint8Array(analyser.frequencyBinCount); const detect = () => { analyser.getByteFrequencyData(values); const level = values.reduce((sum, v) => sum + v, 0) / values.length; const speaking = level > 20 && !(speakerId === "local" && !isAudioEnabled); if(card) card.classList.toggle("is-speaking", speaking); if (speaking) setStageSpeaker(speakerId); requestAnimationFrame(detect); }; detect(); audioContexts.push(context); } catch (e) { console.debug("Speaker indicator unavailable", e); } }
 
-function connectWebSocket() { try { const protocol = location.protocol === "https:" ? "wss" : "ws"; ws = new WebSocket(protocol + "://" + location.host + "/ws?token=" + encodeURIComponent(TOKEN)); ws.onopen = () => sendSignal("join"); ws.onmessage = async event => { let msg; try { msg = JSON.parse(event.data); } catch { return; } switch (msg.type) { case "room-info": handleRoomInfo(msg); break; case "user-joined": await handleUserJoined(msg); break; case "user-left": handleUserLeft(msg); break; case "offer": await handleOffer(msg.offer, msg.user); break; case "answer": if (peers[msg.user]) await peers[msg.user].setRemoteDescription(msg.answer); break; case "ice": if (peers[msg.user] && msg.candidate) try { await peers[msg.user].addIceCandidate(msg.candidate); } catch (e) { console.error(e); } break; case "chat": addChatMessage(msg.user, msg.message); break; case "video-toggle": handleRemoteVideoToggle(msg); break; case "screen-share": handleRemoteScreenShare(msg); break; case "hand-raise": showRemoteHand(msg.user, !!msg.raised); break; case "reaction": showReaction(msg.reaction, msg.user); break; } }; ws.onerror = () => showToast("Signalling service is unavailable."); } catch (e) { console.error(e); } }
+function connectWebSocket() { try { const protocol = location.protocol === "https:" ? "wss" : "ws"; ws = new WebSocket(protocol + "://" + location.host + "/ws?token=" + encodeURIComponent(TOKEN)); ws.onopen = () => sendSignal("join"); ws.onmessage = async event => { let msg; try { msg = JSON.parse(event.data); } catch { return; } switch (msg.type) { case "room-info": handleRoomInfo(msg); break; case "user-joined": await handleUserJoined(msg); break; case "user-left": handleUserLeft(msg); break; case "offer": await handleOffer(msg.offer, msg.cid, msg.user); break; case "answer": if (peers[msg.cid]) await peers[msg.cid].setRemoteDescription(msg.answer); break; case "ice": if (peers[msg.cid] && msg.candidate) try { await peers[msg.cid].addIceCandidate(msg.candidate); } catch (e) { console.error(e); } break; case "chat": addChatMessage(msg.user, msg.message); break; case "video-toggle": handleRemoteVideoToggle(msg); break; case "screen-share": handleRemoteScreenShare(msg); break; case "hand-raise": showRemoteHand(msg.cid, !!msg.raised); break; case "reaction": showReaction(msg.reaction, msg.user); break; } }; ws.onerror = () => showToast("Signalling service is unavailable."); } catch (e) { console.error(e); } }
 
 function handleRoomInfo(msg) {
   const users = msg.users || [];
   setParticipantCount(typeof msg.count === "number" ? msg.count : users.length + 1);
-  users.forEach(u => { if(u !== USERNAME) createParticipantUI(u); });
+  users.forEach(u => { if (u.cid !== CONNECTION_ID) createParticipantUI(u.cid, u.user); });
 }
 
 async function handleUserJoined(msg) {
   setParticipantCount(typeof msg.count === "number" ? msg.count : participantCount + 1);
-  if (msg.user && msg.user !== USERNAME) {
-    createParticipantUI(msg.user);
+  if (msg.cid && msg.cid !== CONNECTION_ID) {
+    createParticipantUI(msg.cid, msg.user);
     showToast(msg.user + " joined the meeting");
     addSystemChatMessage(msg.user + " joined the meeting");
-    await createOffer(msg.user);
+    await createOffer(msg.cid);
   }
 }
 
 function handleUserLeft(msg) {
   setParticipantCount(typeof msg.count === "number" ? msg.count : participantCount - 1);
-  if (msg.user) {
-    showToast(msg.user + " left the meeting");
-    addSystemChatMessage(msg.user + " left the meeting");
-    if (peers[msg.user]) {
-      peers[msg.user].close();
-      delete peers[msg.user];
+  if (msg.cid) {
+    const name = participantNames[msg.cid] || msg.user;
+    showToast(name + " left the meeting");
+    addSystemChatMessage(name + " left the meeting");
+    if (peers[msg.cid]) {
+      peers[msg.cid].close();
+      delete peers[msg.cid];
     }
-    removeParticipantUI(msg.user);
-    if (screenShareSpeaker === msg.user) screenShareSpeaker = null;
-    if (activeSpeaker === msg.user) setStageSpeaker("local", true);
+    removeParticipantUI(msg.cid);
+    if (screenShareSpeaker === msg.cid) screenShareSpeaker = null;
+    if (activeSpeaker === msg.cid) setStageSpeaker("local", true);
   }
 }
 
 function handleRemoteVideoToggle(msg) {
   const isVideoOn = !!msg.enabled;
-  $(`vid-${msg.user}`).textContent = isVideoOn ? "▣" : "▧";
-  $(`avatar-${msg.user}`)?.classList.toggle("hidden", isVideoOn);
-  $(`video-${msg.user}`)?.classList.toggle("hidden", !isVideoOn);
+  $(`vid-${msg.cid}`).textContent = isVideoOn ? "▣" : "▧";
+  $(`avatar-${msg.cid}`)?.classList.toggle("hidden", isVideoOn);
+  $(`video-${msg.cid}`)?.classList.toggle("hidden", !isVideoOn);
 }
 
 function handleRemoteScreenShare(msg) {
   if (msg.enabled) {
-    screenShareSpeaker = msg.user;
-    setStageSpeaker(msg.user, true);
+    screenShareSpeaker = msg.cid;
+    setStageSpeaker(msg.cid, true);
     showToast((msg.user || "Guest") + " is sharing their screen");
-  } else if (screenShareSpeaker === msg.user) {
+  } else if (screenShareSpeaker === msg.cid) {
     screenShareSpeaker = null;
   }
 }
 
-function createPeer(targetUser) {
-  if (peers[targetUser]) return peers[targetUser];
+function createPeer(targetCid) {
+  if (peers[targetCid]) return peers[targetCid];
 
   const pc = new RTCPeerConnection(rtcConfig);
   if (localStream) localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
 
   pc.ontrack = event => {
-    const videoEl = $(`video-${targetUser}`);
+    const videoEl = $(`video-${targetCid}`);
     if (videoEl) {
       videoEl.srcObject = event.streams[0];
-      watchSpeaking(event.streams[0], $(`card-${targetUser}`), targetUser);
+      watchSpeaking(event.streams[0], $(`card-${targetCid}`), targetCid);
     }
   };
 
   pc.onicecandidate = event => {
-    if (event.candidate) sendSignal("ice", { candidate: event.candidate, target: targetUser });
+    if (event.candidate) sendSignal("ice", { candidate: event.candidate, target: targetCid });
   };
 
-  peers[targetUser] = pc;
+  pc.onconnectionstatechange = () => {
+    const stateEl = $(`state-${targetCid}`);
+    if (!stateEl) return;
+    if (pc.connectionState === "connected") stateEl.textContent = "Connected";
+    else if (pc.connectionState === "connecting") stateEl.textContent = "Connecting…";
+    else if (["disconnected", "failed"].includes(pc.connectionState)) stateEl.textContent = "Reconnecting…";
+  };
+
+  peers[targetCid] = pc;
   return pc;
 }
 
-async function createOffer(targetUser) {
-  const pc = createPeer(targetUser);
+async function createOffer(targetCid) {
+  const pc = createPeer(targetCid);
   const offer = await pc.createOffer();
   await pc.setLocalDescription(offer);
-  sendSignal("offer", { offer, target: targetUser });
+  sendSignal("offer", { offer, target: targetCid });
 }
 
-async function handleOffer(offer, fromUser) {
-  createParticipantUI(fromUser);
-  const pc = createPeer(fromUser);
+async function handleOffer(offer, fromCid, fromUser) {
+  createParticipantUI(fromCid, fromUser);
+  const pc = createPeer(fromCid);
   await pc.setRemoteDescription(offer);
   const answer = await pc.createAnswer();
   await pc.setLocalDescription(answer);
-  sendSignal("answer", { answer, target: fromUser });
+  sendSignal("answer", { answer, target: fromCid });
 }
 
 function toggleAudio() { if (!localStream) return; const track = localStream.getAudioTracks()[0]; if (!track) return; track.enabled = !track.enabled; isAudioEnabled = track.enabled; $("muteAudioBtn").classList.toggle("off", !isAudioEnabled); $("muteAudioBtn").querySelector(".rail-icon").textContent = isAudioEnabled ? "🎙" : "🔇"; $("muteAudioBtn").querySelector("span:last-child").textContent = isAudioEnabled ? "Mute" : "Unmute"; $("localMicIcon").textContent = isAudioEnabled ? "🎙" : "🔇"; }
@@ -308,11 +327,11 @@ function addChatMessage(user, message) { const isMe = user === "Me"; const msg =
 function safeText(text) { const div = document.createElement("div"); div.textContent = text; return div.innerHTML; }
 function addSystemChatMessage(text) { const item = document.createElement("div"); item.className = "chat-system"; item.textContent = text; $("messages").append(item); }
 
-function showRemoteHand(user, show) {
-  $(`hand-${user}`)?.classList.toggle("hidden", !show);
-  $(`card-${user}`)?.classList.toggle("hand-raised", show);
-  $(`row-${user}`)?.classList.toggle("hand-raised", show);
-  if (show) showToast((user || "A participant") + " raised a hand");
+function showRemoteHand(cid, show) {
+  $(`hand-${cid}`)?.classList.toggle("hidden", !show);
+  $(`card-${cid}`)?.classList.toggle("hand-raised", show);
+  $(`row-${cid}`)?.classList.toggle("hand-raised", show);
+  if (show) showToast((participantNames[cid] || "A participant") + " raised a hand");
 }
 
 function toggleHand() { raisedHand = !raisedHand; $("localHand").classList.toggle("hidden", !raisedHand); $("localCard").classList.toggle("hand-raised", raisedHand); $("participantList").querySelector(".participant-row.you").classList.toggle("hand-raised", raisedHand); $("raiseHandBtn").classList.toggle("active", raisedHand); $("raiseHandBtn").lastElementChild.textContent = raisedHand ? "Lower hand" : "Raise hand"; sendSignal("hand-raise", { raised: raisedHand }); }

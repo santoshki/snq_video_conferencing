@@ -1,15 +1,16 @@
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
+import json
 import os
 import uuid
 import jwt
 import time
 
-from config import JWT_SECRET, JWT_ALGO, JWT_EXP_SECONDS
+from config import JWT_SECRET, JWT_ALGO, JWT_EXP_SECONDS, FLASK_SECRET_KEY, ICE_SERVERS
 import ws_server
 
 app = Flask(__name__)
 
-app.secret_key = "your_flask_session_secret"
+app.secret_key = FLASK_SECRET_KEY
 
 # Attaches the /ws WebSocket route to this same Flask app/port instead of
 # spinning up a separate server on its own port (which Render can't expose).
@@ -160,10 +161,18 @@ def meeting_room(room_id):
 
     meeting_title = session.get("meeting_title", "SnQ Meeting")
 
+    # A fresh connection id per page load (not the username) is what
+    # identifies a participant's WebSocket in the room. Using the username
+    # for that used to mean two participants with the same display name
+    # (or the same person open in two tabs) would collide and boot each
+    # other out of the room, which is what broke things beyond 2 people.
+    connection_id = uuid.uuid4().hex
+
     token = jwt.encode(
         {
             "user": username,
             "room": room_id,
+            "cid": connection_id,
             "exp": int(time.time()) + JWT_EXP_SECONDS
         },
         JWT_SECRET,
@@ -175,7 +184,9 @@ def meeting_room(room_id):
         room_id=room_id,
         meeting_title=meeting_title,
         username=username,
-        token=token
+        token=token,
+        connection_id=connection_id,
+        ice_servers_json=json.dumps(ICE_SERVERS)
     )
 
 
@@ -195,4 +206,5 @@ if __name__ == "__main__":
     # concurrent WebSocket connection at a time, which the plain Werkzeug
     # server otherwise can't do.
     port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=True, use_reloader=False, threaded=True)
+    debug = os.environ.get("FLASK_DEBUG", "0") == "1"
+    app.run(host="0.0.0.0", port=port, debug=debug, use_reloader=False, threaded=True)
