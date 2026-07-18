@@ -12,6 +12,21 @@
       grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
       gap: 16px;
       align-content: center;
+      position: relative;
+    }
+    /* room_styles.css positions .video-empty as a full-bleed overlay, which
+       was covering the local video card so your own tile (and name) never
+       showed up while you were alone in the room. Force it back into
+       normal grid flow so it sits above your tile instead of over it. */
+    .video-area .video-empty {
+      position: static !important;
+      inset: auto !important;
+      grid-column: 1 / -1;
+      pointer-events: none;
+    }
+    .video-area .video-card {
+      position: relative;
+      z-index: 1;
     }
   </style>
 </head>

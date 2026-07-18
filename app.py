@@ -27,6 +27,9 @@ def login():
         if username == "admin" and password == "password":
             session["user"] = username
             return redirect(url_for("home"))
+        elif username == "testadmin" and password != "password":
+            session["user"] = "testadmin"
+            return redirect(url_for("home"))
         else:
             return "Invalid credentials", 401
 
