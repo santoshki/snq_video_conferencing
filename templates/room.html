@@ -41,7 +41,7 @@
         <button id="exitMeetingBtn" class="rail-button leave" onclick="exitMeeting()" title="Leave meeting"><span class="rail-icon">↗</span><span>Leave</span></button>
       </aside>
 
-      <section class="video-area">
+      <section class="video-area" id="videoArea">
         <article class="video-card remote-card" id="remoteCard">
           <video id="remoteVideo" autoplay playsinline></video>
           <div id="remoteAvatar" class="video-avatar hidden"><span id="remoteInitials">?</span></div>
@@ -128,7 +128,7 @@ $("sendBtn").onclick = sendChatMessage; $("chatInput").addEventListener("keydown
 $("muteAudioBtn").addEventListener("click", () => setTimeout(syncLocalMuteUI, 0));
 $("chatToggleBtn").addEventListener("click", () => $("participantsPanel").classList.remove("chat-closed"));
 $("closeChatBtn").addEventListener("click", () => $("participantsPanel").classList.add("chat-closed"));
-window.addEventListener("load", async () => { startMeetingTimer(); await initMedia(); setInitialCameraOff(); syncLocalMuteUI(); connectWebSocket(); if (ws) ws.addEventListener("open", () => { if (!isVideoEnabled) sendSignal("video-toggle", { enabled: false }); }, { once: true }); }); window.addEventListener("beforeunload", () => sendSignal("leave"));
+window.addEventListener("load", async () => { startMeetingTimer(); await initMedia(); syncLocalMuteUI(); connectWebSocket(); if (ws) ws.onerror = event => console.error("WebSocket error:", event); }); window.addEventListener("beforeunload", () => sendSignal("leave"));
 </script>
 </body>
 </html>

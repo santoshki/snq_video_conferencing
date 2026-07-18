@@ -115,3 +115,6 @@ body[data-filter='soft'] video { filter:brightness(1.05) saturate(.9) contrast(.
 .video-card.hand-raised::after { position:absolute;z-index:12;top:18px;left:18px;display:grid;place-items:center;width:58px;height:58px;border:2px solid rgba(255,255,255,.9);border-radius:18px;background:linear-gradient(145deg,#ffe89c,#f5bf37);box-shadow:0 10px 22px rgba(137,92,0,.28);content:"✋";font-size:31px;line-height:1;animation:hand .8s ease-in-out infinite alternate; }
 .video-card.hand-raised .hand-indicator { display:none!important; }
 .remote-card.hand-raised::after { top:8px;left:8px;width:36px;height:36px;border-radius:12px;font-size:20px; }
+
+/* Preserve the full native webcam frame instead of cropping it to the tile. */
+.local-card video,.remote-card video { object-fit:contain!important;transform:scale(.98);background:#1d2638; }
