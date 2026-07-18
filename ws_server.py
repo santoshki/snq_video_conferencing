@@ -1,160 +1,127 @@
 """
-WebSocket signaling server for SnQ meetings.
+WebSocket signaling for SnQ meetings — served on the SAME port as Flask.
 
-room.html connects to ws://<host>:8080/ws?token=<jwt>. That token is the
-same JWT that /meeting/<room_id> already issues (see app.py), so this
-server just decodes it to find out which room/user the socket belongs to,
-then relays messages between the participants of that room:
+Why this file changed:
+Render (like most PaaS hosts) only exposes a single port to the internet -
+whatever port is bound via the $PORT environment variable. The previous
+version of this file ran its own asyncio WebSocket server on a hardcoded
+port 8080. That works on a local machine (both :5000 and :8080 are directly
+reachable on localhost), but on Render nothing outside the container can
+ever reach :8080, so every WebSocket connection silently failed there.
 
-  - join    -> sends "room-info" back to the new client, and "user-joined"
-               to everyone already in the room
-  - leave / disconnect -> sends "user-left" to everyone still in the room
-  - offer / answer / ice / chat / video-toggle / hand-raise / reaction
-               -> forwarded as-is to the other participant(s) in the room
+The fix: use flask-sock so the WebSocket endpoint (/ws) is just another
+route on the existing Flask app, sharing its host/port. No second port,
+no separate process - it rides on whatever port Render assigns.
 
-Without this server running, every client's WebSocket never connects to
-anything, which is why two participants never sync and chat never
-delivers - there was simply nothing listening on port 8080.
+room.html already talks to "/ws" with a JWT in the query string, so the
+client-visible protocol is unchanged; only how it's served changed.
 """
 
-import asyncio
 import json
-import logging
 import threading
-from urllib.parse import urlparse, parse_qs
 
 import jwt
-import websockets
+from flask import request
+from flask_sock import Sock
 
 from config import JWT_SECRET, JWT_ALGO
 
-logger = logging.getLogger("ws_server")
-
-# room_id -> { username: websocket }
-rooms: dict[str, dict[str, "websockets.WebSocketServerProtocol"]] = {}
-
-
-async def _broadcast(room_id, message, exclude_user=None):
-    room = rooms.get(room_id, {})
-    if not room:
-        return
-    data = json.dumps(message)
-    dead_users = []
-    for user, sock in list(room.items()):
-        if user == exclude_user:
-            continue
-        try:
-            await sock.send(data)
-        except websockets.exceptions.ConnectionClosed:
-            dead_users.append(user)
-    for user in dead_users:
-        room.pop(user, None)
+# room_id -> { username: ws_connection }
+rooms = {}
+rooms_lock = threading.Lock()
 
 
-def _authenticate(path):
-    """Pull the JWT out of the query string and validate it."""
-    query = parse_qs(urlparse(path).query)
-    token = query.get("token", [None])[0]
+def _authenticate(token):
     if not token:
         return None, None
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGO])
-    except jwt.PyJWTError as exc:
-        logger.warning("Rejected WS connection: %s", exc)
+    except jwt.PyJWTError:
         return None, None
     return payload.get("room"), payload.get("user")
 
 
-async def _handler(websocket, path=None):
-    # websockets>=13 no longer passes `path` to the handler; fall back to
-    # the attribute exposed on the connection object in that case.
-    if path is None:
-        path = getattr(websocket, "path", "") or getattr(
-            getattr(websocket, "request", None), "path", ""
-        )
+def _broadcast(room_id, message, exclude_user=None):
+    with rooms_lock:
+        room = rooms.get(room_id, {})
+        targets = [(user, sock) for user, sock in room.items() if user != exclude_user]
 
-    room_id, username = _authenticate(path)
-    if not room_id or not username:
-        await websocket.close(code=4401, reason="Invalid or missing token")
-        return
-
-    room = rooms.setdefault(room_id, {})
-
-    # If the same user reconnects (refresh/reconnect), replace their old socket.
-    old_socket = room.get(username)
-    if old_socket is not None and old_socket is not websocket:
+    data = json.dumps(message)
+    dead_users = []
+    for user, sock in targets:
         try:
-            await old_socket.close()
+            sock.send(data)
         except Exception:
-            pass
+            dead_users.append(user)
 
-    room[username] = websocket
+    if dead_users:
+        with rooms_lock:
+            room = rooms.get(room_id)
+            if room:
+                for user in dead_users:
+                    room.pop(user, None)
 
-    try:
-        others = [u for u in room.keys() if u != username]
-        await websocket.send(json.dumps({
-            "type": "room-info",
-            "users": others,
-            "count": len(room),
-        }))
-        await _broadcast(room_id, {
-            "type": "user-joined",
-            "user": username,
-            "count": len(room),
-        }, exclude_user=username)
 
-        async for raw in websocket:
+def init_app(app):
+    """Attach the /ws WebSocket route to the given Flask app."""
+    sock = Sock(app)
+
+    @sock.route("/ws")
+    def ws_route(ws):
+        token = request.args.get("token")
+        room_id, username = _authenticate(token)
+        if not room_id or not username:
+            ws.close()
+            return
+
+        with rooms_lock:
+            room = rooms.setdefault(room_id, {})
+            old_socket = room.get(username)
+            room[username] = ws
+            others = [u for u in room.keys() if u != username]
+            count = len(room)
+
+        # If the same user reconnects (refresh/reconnect), close their old socket.
+        if old_socket is not None and old_socket is not ws:
             try:
-                msg = json.loads(raw)
-            except json.JSONDecodeError:
-                continue
+                old_socket.close()
+            except Exception:
+                pass
 
-            msg_type = msg.get("type")
+        ws.send(json.dumps({"type": "room-info", "users": others, "count": count}))
+        _broadcast(room_id, {"type": "user-joined", "user": username, "count": count}, exclude_user=username)
 
-            if msg_type == "join":
-                # Already handled above on connect - nothing more to do.
-                continue
-            if msg_type == "leave":
-                break
+        try:
+            while True:
+                raw = ws.receive()
+                if raw is None:
+                    break  # client disconnected
+                try:
+                    msg = json.loads(raw)
+                except json.JSONDecodeError:
+                    continue
 
-            # Relay everything else (offer/answer/ice/chat/video-toggle/
-            # hand-raise/reaction) to the other participant(s) in the room.
-            # Always stamp the authoritative username from the token so a
-            # client can't spoof another participant's identity.
-            msg["user"] = username
-            await _broadcast(room_id, msg, exclude_user=username)
+                msg_type = msg.get("type")
+                if msg_type == "join":
+                    continue  # already handled on connect
+                if msg_type == "leave":
+                    break
 
-    except websockets.exceptions.ConnectionClosed:
-        pass
-    finally:
-        current_room = rooms.get(room_id, {})
-        if current_room.get(username) is websocket:
-            current_room.pop(username, None)
-        remaining = len(current_room)
-        if not current_room:
-            rooms.pop(room_id, None)
-        await _broadcast(room_id, {
-            "type": "user-left",
-            "user": username,
-            "count": remaining,
-        })
+                # Relay offer/answer/ice/chat/video-toggle/hand-raise/reaction/
+                # screen-share etc. to the other participant(s) in the room.
+                # Always stamp the authoritative username from the token so a
+                # client can't spoof another participant's identity.
+                msg["user"] = username
+                _broadcast(room_id, msg, exclude_user=username)
+        finally:
+            with rooms_lock:
+                current_room = rooms.get(room_id, {})
+                if current_room.get(username) is ws:
+                    current_room.pop(username, None)
+                remaining = len(current_room)
+                if not current_room:
+                    rooms.pop(room_id, None)
 
+            _broadcast(room_id, {"type": "user-left", "user": username, "count": remaining})
 
-async def _serve(host="0.0.0.0", port=8080):
-    async with websockets.serve(_handler, host, port):
-        logger.info("Signaling server listening on ws://%s:%s/ws", host, port)
-        await asyncio.Future()  # run forever
-
-
-def _run_forever(host, port):
-    asyncio.run(_serve(host, port))
-
-
-def start_signaling_server(host="0.0.0.0", port=8080):
-    """Start the signaling server on a background thread so it can run
-    alongside the Flask app in the same process."""
-    thread = threading.Thread(
-        target=_run_forever, args=(host, port), daemon=True
-    )
-    thread.start()
-    return thread
+    return sock

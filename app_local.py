@@ -1,19 +1,14 @@
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
-import os
 import uuid
 import jwt
 import time
 
 from config import JWT_SECRET, JWT_ALGO, JWT_EXP_SECONDS
-import ws_server
+from ws_server import start_signaling_server
 
 app = Flask(__name__)
 
 app.secret_key = "your_flask_session_secret"
-
-# Attaches the /ws WebSocket route to this same Flask app/port instead of
-# spinning up a separate server on its own port (which Render can't expose).
-ws_server.init_app(app)
 
 
 @app.route("/snq_login", methods=["GET", "POST"])
@@ -188,11 +183,10 @@ def logout():
 
 
 if __name__ == "__main__":
-    # Render (and most PaaS hosts) assign the externally-reachable port via
-    # the $PORT environment variable and only expose that single port, so
-    # we must bind to it rather than a hardcoded port. Locally this falls
-    # back to 5000. threaded=True lets the dev server handle more than one
-    # concurrent WebSocket connection at a time, which the plain Werkzeug
-    # server otherwise can't do.
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=True, use_reloader=False, threaded=True)
+    # use_reloader=False keeps this to a single process. With the reloader
+    # on, Flask spawns a child process that re-imports this module, and on
+    # Windows in particular the old process/socket doesn't always get
+    # cleaned up on restart, which causes "address already in use" (10048)
+    # errors on the signaling server's port.
+    start_signaling_server(port=8080)
+    app.run(debug=True, use_reloader=False)
