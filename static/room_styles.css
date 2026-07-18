@@ -80,3 +80,38 @@ body[data-filter='soft'] video { filter:brightness(1.05) saturate(.9) contrast(.
 }
 .speaker-wave { display:flex;opacity:.38; }
 .video-card.is-speaking .speaker-wave { opacity:1;filter:drop-shadow(0 0 5px rgba(86,225,201,.85)); }
+
+/* Modern control glyphs, mute state, and adaptive right-side panels. */
+#muteAudioBtn .rail-icon,#disableVideoBtn .rail-icon,#screenShareBtn .rail-icon { position:relative;display:block;width:23px;height:23px;font-size:0; }
+#muteAudioBtn .rail-icon::before { position:absolute;top:2px;left:7px;width:7px;height:12px;border:2px solid currentColor;border-radius:6px;content:""; }
+#muteAudioBtn .rail-icon::after { position:absolute;top:13px;left:4px;width:14px;height:8px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;border-left:2px solid currentColor;border-radius:0 0 9px 9px;content:""; }
+#muteAudioBtn.off .rail-icon { background:linear-gradient(135deg,transparent 43%,currentColor 44%,currentColor 56%,transparent 57%); }
+#disableVideoBtn .rail-icon::before { position:absolute;top:5px;left:2px;width:13px;height:11px;border:2px solid currentColor;border-radius:4px;content:""; }
+#disableVideoBtn .rail-icon::after { position:absolute;top:7px;right:1px;width:7px;height:8px;background:currentColor;clip-path:polygon(0 25%,100% 0,100% 100%,0 75%);content:""; }
+#disableVideoBtn.off .rail-icon { background:linear-gradient(135deg,transparent 43%,currentColor 44%,currentColor 56%,transparent 57%); }
+#screenShareBtn .rail-icon::before { position:absolute;top:3px;left:2px;width:17px;height:13px;border:2px solid currentColor;border-radius:3px;content:""; }
+#screenShareBtn .rail-icon::after { position:absolute;top:0;left:8px;color:currentColor;content:"↑";font:700 18px/1 Arial,sans-serif; }
+.speaker-wave.muted { position:relative;display:block;width:17px;height:16px;opacity:1;color:#ff9aa8;filter:none; }
+.speaker-wave.muted i { display:none; }.speaker-wave.muted::before { position:absolute;top:3px;left:0;width:14px;height:11px;background:currentColor;clip-path:polygon(0 34%,30% 34%,66% 0,66% 100%,30% 66%,0 66%);content:""; }.speaker-wave.muted::after { position:absolute;top:7px;left:-1px;width:19px;height:2px;border-radius:3px;background:currentColor;content:"";transform:rotate(-45deg); }
+.video-card.is-speaking { border-color:#f5c342!important;box-shadow:0 0 0 3px rgba(245,195,66,.58),0 15px 34px rgba(43,48,63,.18)!important; }
+.participants-panel { transition:height .28s ease,box-shadow .28s ease; }.participants-panel.chat-closed { height:calc(100vh - 164px);box-shadow:0 14px 32px rgba(43,48,63,.12); }
+@media (max-width:1120px) { .participants-panel.chat-closed { height:auto; } }
+
+/* Participant state is mirrored in the right-side list. */
+.participant-row.is-unmuted { background:#edfdf6;box-shadow:inset 0 0 0 1.5px #32c995; }
+.participant-row.hand-raised { position:relative;background:#fff9e8;box-shadow:inset 0 0 0 1.5px #f5c342; }
+.participant-row.hand-raised::after { position:absolute;top:50%;right:7px;display:grid;place-items:center;width:24px;height:24px;border-radius:8px;background:#fff2bf;box-shadow:0 3px 8px rgba(152,110,0,.18);content:"✋";font-size:14px;transform:translateY(-50%); }
+.participant-row.hand-raised .participant-status { margin-right:27px; }
+
+/* Audio availability takes visual priority over the raised-hand border. */
+.participant-row.is-unmuted.hand-raised { background:#edfff7;box-shadow:inset 0 0 0 2px #25c88f,0 0 0 3px rgba(37,200,143,.12); }
+
+/* Green video-stage feedback for available microphones and live speakers. */
+.local-card:not(.is-muted) { border-color:#25c88f;box-shadow:0 0 0 3px rgba(37,200,143,.52),0 15px 34px rgba(43,48,63,.18); }
+.video-card.is-speaking { border-color:#25c88f!important;box-shadow:0 0 0 3px rgba(37,200,143,.7),0 0 23px rgba(37,200,143,.28),0 15px 34px rgba(43,48,63,.18)!important; }
+
+/* Raised-hand state is deliberately more prominent than normal speaking feedback. */
+.video-card.hand-raised { border-color:#f5c342!important;box-shadow:0 0 0 4px rgba(245,195,66,.72),0 0 27px rgba(245,195,66,.26),0 15px 34px rgba(43,48,63,.18)!important; }
+.video-card.hand-raised::after { position:absolute;z-index:12;top:18px;left:18px;display:grid;place-items:center;width:58px;height:58px;border:2px solid rgba(255,255,255,.9);border-radius:18px;background:linear-gradient(145deg,#ffe89c,#f5bf37);box-shadow:0 10px 22px rgba(137,92,0,.28);content:"✋";font-size:31px;line-height:1;animation:hand .8s ease-in-out infinite alternate; }
+.video-card.hand-raised .hand-indicator { display:none!important; }
+.remote-card.hand-raised::after { top:8px;left:8px;width:36px;height:36px;border-radius:12px;font-size:20px; }
