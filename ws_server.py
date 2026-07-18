@@ -1,22 +1,3 @@
-"""
-WebSocket signaling for SnQ meetings — served on the SAME port as Flask.
-
-Why this file changed:
-Render (like most PaaS hosts) only exposes a single port to the internet -
-whatever port is bound via the $PORT environment variable. The previous
-version of this file ran its own asyncio WebSocket server on a hardcoded
-port 8080. That works on a local machine (both :5000 and :8080 are directly
-reachable on localhost), but on Render nothing outside the container can
-ever reach :8080, so every WebSocket connection silently failed there.
-
-The fix: use flask-sock so the WebSocket endpoint (/ws) is just another
-route on the existing Flask app, sharing its host/port. No second port,
-no separate process - it rides on whatever port Render assigns.
-
-room.html already talks to "/ws" with a JWT in the query string, so the
-client-visible protocol is unchanged; only how it's served changed.
-"""
-
 import json
 import threading
 
@@ -55,11 +36,29 @@ def _broadcast(room_id, message, exclude_user=None):
             dead_users.append(user)
 
     if dead_users:
-        with rooms_lock:
-            room = rooms.get(room_id)
-            if room:
-                for user in dead_users:
-                    room.pop(user, None)
+        _cleanup_dead_users(room_id, dead_users)
+
+
+def _send_to_user(room_id, target_user, message):
+    """Sends a targeted message to a specific user inside a room."""
+    with rooms_lock:
+        room = rooms.get(room_id, {})
+        sock = room.get(target_user)
+
+    if sock:
+        try:
+            sock.send(json.dumps(message))
+        except Exception:
+            _cleanup_dead_users(room_id, [target_user])
+
+
+def _cleanup_dead_users(room_id, dead_users):
+    """Helper to prune disconnected sockets safely."""
+    with rooms_lock:
+        room = rooms.get(room_id)
+        if room:
+            for user in dead_users:
+                room.pop(user, None)
 
 
 def init_app(app):
@@ -107,12 +106,18 @@ def init_app(app):
                 if msg_type == "leave":
                     break
 
-                # Relay offer/answer/ice/chat/video-toggle/hand-raise/reaction/
-                # screen-share etc. to the other participant(s) in the room.
-                # Always stamp the authoritative username from the token so a
-                # client can't spoof another participant's identity.
+                # Authoritatively stamp the username from the token
                 msg["user"] = username
-                _broadcast(room_id, msg, exclude_user=username)
+
+                # Extract the direct target user if one is provided by the frontend
+                target_user = msg.get("target")
+
+                # WebRTC Handshaking signals MUST be routed 1-to-1 directly to the target
+                if msg_type in ["offer", "answer", "ice"] and target_user:
+                    _send_to_user(room_id, target_user, msg)
+                else:
+                    # Global room events (Chat messages, Reactions, Screen Share Toggles, Hand Raises)
+                    _broadcast(room_id, msg, exclude_user=username)
         finally:
             with rooms_lock:
                 current_room = rooms.get(room_id, {})
