@@ -19,13 +19,53 @@ button,input { font:inherit; } button { color:inherit; } button,input { -webkit-
 .meeting-layout { display:block;min-height:calc(100vh - 150px); }.control-rail { position:fixed;z-index:20;top:25px;bottom:25px;left:18px;display:flex;flex-direction:column;align-items:center;gap:10px;width:66px;padding:12px 4px;border-radius:22px;background:#131513;box-shadow:0 14px 29px rgba(16,18,17,.2); }
 .rail-button { position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;width:54px;height:55px;border:0;border-radius:15px;background:transparent;color:#c7cac2;cursor:pointer;font-size:9px;font-weight:700;transition:.18s; }.rail-icon { font-size:22px;line-height:1; }.rail-button:hover,.rail-button.active { background:#292d25;color:var(--yellow); }.rail-button.off { background:#fff0f2;color:#e8546e; }.rail-button.active::before { position:absolute;left:-4px;width:4px;height:22px;border-radius:0 5px 5px 0;background:var(--yellow);content:''; }.rail-button.leave { margin-top:0;color:#ff93a1; }.rail-button.leave:hover { background:var(--danger);color:#fff; }.rail-spacer { flex:1;min-height:18px; }
 
-/* Video workspace: organizer first, guests form a bottom strip */
-.video-area { position:relative;display:grid;grid-template-rows:minmax(330px,1fr) 122px;gap:14px;height:calc(100vh - 182px);min-height:560px; }
-.video-card { position:relative;overflow:hidden;border:7px solid var(--card);border-radius:25px;background:#e7ebf4;box-shadow:0 13px 32px rgba(43,48,63,.1); }.video-card video { position:absolute;inset:0;width:100%;height:100%;background:#dce4f2;object-fit:cover;transition:filter .25s; }.video-card.is-speaking { box-shadow:0 0 0 3px var(--mint),0 15px 34px rgba(43,48,63,.14); }
-.local-card { z-index:1;grid-row:1;grid-column:1; }.remote-card { grid-row:2;grid-column:1;justify-self:center;width:190px;min-height:0;border-width:4px;border-radius:18px;box-shadow:0 10px 22px rgba(43,48,63,.16); }.video-sheen { position:absolute;inset:0;pointer-events:none;background:linear-gradient(135deg,rgba(255,255,255,.14),transparent 34%,transparent 62%,rgba(78,93,151,.1)); }
-.video-footer { position:absolute;right:0;bottom:0;left:0;z-index:4;display:flex;align-items:center;justify-content:space-between;padding:20px 21px;background:linear-gradient(transparent,rgba(17,25,45,.74));color:#fff;font-size:12px;font-weight:700; }.remote-card .video-footer { padding:8px 10px;font-size:10px; }.speaker-info { display:flex;align-items:center;gap:8px; }.speaker-wave { display:none;align-items:center;gap:2px;height:13px; }.video-card.is-speaking .speaker-wave { display:flex; }.speaker-wave i { display:block;width:2px;border-radius:3px;background:#56e1c9;animation:wave .65s ease-in-out infinite alternate; }.speaker-wave i:nth-child(1){height:5px}.speaker-wave i:nth-child(2){height:12px;animation-delay:.18s}.speaker-wave i:nth-child(3){height:8px;animation-delay:.34s}.speaker-wave i:nth-child(4){height:4px;animation-delay:.08s}.quality-badge { border:1px solid rgba(255,255,255,.32);border-radius:7px;background:rgba(11,16,28,.38);padding:5px 8px;color:#fff;font-size:10px; }.remote-card .quality-badge { display:none; }.hand-indicator { font-size:17px;animation:hand .8s ease-in-out infinite alternate;filter:drop-shadow(0 2px 5px rgba(0,0,0,.35)); }
-.video-avatar { position:absolute;inset:0;z-index:2;display:grid;place-items:center;background:radial-gradient(circle at 50% 40%,#dce7fb,#c4d1e7 72%); }.video-avatar span { display:grid;place-items:center;width:94px;height:94px;border-radius:30px;background:linear-gradient(135deg,#8766e8,#e36fc1);box-shadow:0 14px 28px rgba(126,93,225,.25);color:#1d2945;font:800 32px 'Manrope',sans-serif; }.remote-card .video-avatar span { width:50px;height:50px;border-radius:17px;font-size:17px; }
-.video-empty { position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;background:radial-gradient(circle at 50% 37%,#edf1fd,transparent 53%),#e3e8f2;color:#273450;text-align:center; }.video-empty p { margin:3px 7px 0;font:700 11px 'Manrope',sans-serif; }.video-empty span { display:none;color:#6e7d99;font-size:10px; }.empty-orb { display:grid;place-items:center;width:38px;height:38px;border:1px solid #b7a9fc;border-radius:50%;background:#f9f7ff;box-shadow:0 0 0 6px rgba(122,101,232,.08);color:#7662e8;font-size:18px; }.hidden { display:none!important; }
+/* Video workspace: one card on stage, everyone else forms a scrollable strip */
+.video-area {
+  position:relative;
+  display:grid;
+  grid-template-rows:minmax(330px,1fr) 122px;
+  grid-template-columns:repeat(auto-fill,190px);
+  justify-content:center;
+  align-content:start;
+  gap:14px;
+  height:calc(100vh - 182px);
+  min-height:560px;
+  overflow-y:visible;
+}
+.video-card {
+  position:relative;
+  overflow:hidden;
+  grid-row:2;
+  width:190px;
+  min-height:0;
+  border:4px solid var(--card);
+  border-radius:18px;
+  background:#e7ebf4;
+  box-shadow:0 10px 22px rgba(43,48,63,.16);
+}
+.video-card video { position:absolute;inset:0;width:100%;height:100%;background:#dce4f2;object-fit:cover;transition:filter .25s; }
+.video-card.is-speaking { box-shadow:0 0 0 3px var(--mint),0 15px 34px rgba(43,48,63,.14); }
+
+/* Whichever participant is on stage (you, by default, or an active
+   screen-share/speaker) is promoted here - everyone else, however many
+   there are, lines up as thumbnails in the strip below and scrolls
+   horizontally if there isn't room for all of them. */
+.video-card.is-stage {
+  z-index:1;
+  grid-row:1;
+  grid-column:1 / -1;
+  width:auto;
+  min-height:0;
+  border-width:7px;
+  border-radius:25px;
+  box-shadow:0 13px 32px rgba(43,48,63,.1);
+}
+.video-sheen { position:absolute;inset:0;pointer-events:none;background:linear-gradient(135deg,rgba(255,255,255,.14),transparent 34%,transparent 62%,rgba(78,93,151,.1)); }
+.video-footer { position:absolute;right:0;bottom:0;left:0;z-index:4;display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:linear-gradient(transparent,rgba(17,25,45,.74));color:#fff;font-size:10px;font-weight:700; }.video-card.is-stage .video-footer { padding:20px 21px;font-size:12px; }.speaker-info { display:flex;align-items:center;gap:8px; }.speaker-wave { display:none;align-items:center;gap:2px;height:13px; }.video-card.is-speaking .speaker-wave { display:flex; }.speaker-wave i { display:block;width:2px;border-radius:3px;background:#56e1c9;animation:wave .65s ease-in-out infinite alternate; }.speaker-wave i:nth-child(1){height:5px}.speaker-wave i:nth-child(2){height:12px;animation-delay:.18s}.speaker-wave i:nth-child(3){height:8px;animation-delay:.34s}.speaker-wave i:nth-child(4){height:4px;animation-delay:.08s}.quality-badge { display:none;border:1px solid rgba(255,255,255,.32);border-radius:7px;background:rgba(11,16,28,.38);padding:5px 8px;color:#fff;font-size:10px; }.video-card.is-stage .quality-badge { display:inline-block; }.hand-indicator { font-size:17px;animation:hand .8s ease-in-out infinite alternate;filter:drop-shadow(0 2px 5px rgba(0,0,0,.35)); }
+.video-avatar { position:absolute;inset:0;z-index:2;display:grid;place-items:center;background:radial-gradient(circle at 50% 40%,#dce7fb,#c4d1e7 72%); }.video-avatar span { display:grid;place-items:center;width:50px;height:50px;border-radius:17px;background:linear-gradient(135deg,#8766e8,#e36fc1);box-shadow:0 14px 28px rgba(126,93,225,.25);color:#1d2945;font:800 17px 'Manrope',sans-serif; }.video-card.is-stage .video-avatar span { width:94px;height:94px;border-radius:30px;font-size:32px; }
+/* Placeholder strip banner shown only while you're the only one here - it
+   takes the strip's own slot instead of covering your video. */
+.video-empty { position:relative;grid-row:2;grid-column:1 / -1;z-index:2;display:flex;align-items:center;justify-content:center;gap:8px;min-height:0;border-radius:18px;background:radial-gradient(circle at 50% 37%,#edf1fd,transparent 53%),#e3e8f2;color:#273450;text-align:center;padding:0 16px; }.video-empty p { margin:0;font:700 11px 'Manrope',sans-serif; }.video-empty span { display:none;color:#6e7d99;font-size:10px; }.empty-orb { display:grid;place-items:center;width:28px;height:28px;border:1px solid #b7a9fc;border-radius:50%;background:#f9f7ff;box-shadow:0 0 0 6px rgba(122,101,232,.08);color:#7662e8;font-size:14px; }.hidden { display:none!important; }
 .captions { position:absolute;z-index:8;bottom:154px;left:50%;max-width:70%;border-radius:9px;background:rgba(10,14,26,.78);padding:9px 13px;color:#fff;text-align:center;font-size:13px;font-weight:600;transform:translateX(-50%); }.effects-menu { position:absolute;z-index:10;bottom:145px;left:18px;width:175px;border:1px solid #e2e5ee;border-radius:14px;background:#fff;padding:10px;box-shadow:0 15px 35px rgba(37,42,57,.16); }.effects-menu p { margin:2px 4px 8px;color:#69758d;font-size:11px;font-weight:700; }.effects-menu button { width:100%;border:0;border-radius:8px;background:transparent;padding:8px;text-align:left;color:#45516a;cursor:pointer;font-size:11px; }.effects-menu button:hover,.effects-menu button.selected { background:#f0edff;color:#5b49c8; }
 body[data-filter='soft'] video { filter:brightness(1.05) saturate(.9) contrast(.93); } body[data-filter='mono'] video { filter:grayscale(1) contrast(1.08); } body[data-filter='warm'] video { filter:sepia(.22) saturate(1.18) hue-rotate(335deg) brightness(1.05); }
 
@@ -38,18 +78,7 @@ body[data-filter='soft'] video { filter:brightness(1.05) saturate(.9) contrast(.
 @keyframes wave { to { opacity:.45;transform:scaleY(.45); } } @keyframes pulse { 50% { opacity:.45;transform:scale(.78); } } @keyframes hand { to { transform:rotate(12deg) translateY(-2px); } } @keyframes floatUp { from { opacity:0;transform:translate(-50%,0) scale(.65); } 15% { opacity:1; } to { opacity:0;transform:translate(-50%,-240px) scale(1.25) rotate(14deg); } }
 
 @media (max-width:1120px) { .meeting-app { padding:16px 22px 18px 98px; }.topbar { width:100%; }.participants-panel { z-index:30;top:98px;right:18px;transform:translateX(calc(100% + 28px));transition:.25s; }.participants-panel.compact-open { transform:none; }.chat-panel { right:18px; }.video-area { min-height:540px;height:calc(100vh - 162px); }.control-rail { left:14px; } }
-@media (max-width:760px) { .meeting-app { padding:10px 10px 10px 65px; }.topbar { min-height:58px;gap:10px;border-radius:15px;padding:8px 9px; }.brand { display:none; }.meeting-meta { max-width:44%; }.top-actions { gap:0; }.top-action { padding:7px; }.top-action span:last-child { display:none; }.elapsed-area { padding:10px 2px 12px; }.meeting-id-label { display:none; }.control-rail { top:10px;bottom:10px;left:7px;width:47px;padding:7px 0;border-radius:16px; }.rail-button { width:42px;height:47px;font-size:8px; }.rail-icon { font-size:18px; }.video-area { grid-template-rows:minmax(300px,1fr) 94px;gap:8px;height:calc(100vh - 112px);min-height:420px; }.video-card { border-width:4px;border-radius:18px; }.remote-card { width:142px;border-width:3px;border-radius:14px; }.video-footer { padding:12px;font-size:10px; }.participants-panel { top:72px;right:10px;width:calc(100vw - 76px);height:auto;min-height:0; }.chat-panel { right:10px;bottom:10px;width:calc(100vw - 76px);height:360px;min-height:0; }.captions { bottom:120px;max-width:90%;font-size:11px; }.effects-menu { bottom:110px;left:8px; } }
-
-/* Active-speaker stage: everyone starts with their own camera large. */
-@media (min-width:1121px) {
-  .video-area { height:min(calc(100vh - 230px),650px);min-height:500px; }
-  .video-area.remote-main .remote-card { grid-row:1;justify-self:stretch;align-self:stretch;width:auto;min-height:0;border-width:7px;border-radius:25px;box-shadow:0 13px 32px rgba(43,48,63,.1); }
-  .video-area.remote-main .local-card { grid-row:2;justify-self:center;align-self:stretch;width:190px;min-height:0;border-width:4px;border-radius:18px;box-shadow:0 10px 22px rgba(43,48,63,.16); }
-  .video-area.remote-main .remote-card .video-footer { padding:20px 21px;font-size:12px; }
-  .video-area.remote-main .local-card .video-footer { padding:8px 10px;font-size:10px; }
-  .video-area.remote-main .remote-card .quality-badge { display:inline-block; }
-  .video-area.remote-main .local-card .quality-badge { display:none; }
-}
+@media (max-width:760px) { .meeting-app { padding:10px 10px 10px 65px; }.topbar { min-height:58px;gap:10px;border-radius:15px;padding:8px 9px; }.brand { display:none; }.meeting-meta { max-width:44%; }.top-actions { gap:0; }.top-action { padding:7px; }.top-action span:last-child { display:none; }.elapsed-area { padding:10px 2px 12px; }.meeting-id-label { display:none; }.control-rail { top:10px;bottom:10px;left:7px;width:47px;padding:7px 0;border-radius:16px; }.rail-button { width:42px;height:47px;font-size:8px; }.rail-icon { font-size:18px; }.video-area { grid-template-rows:minmax(300px,1fr) 94px;grid-template-columns:repeat(auto-fill,142px);gap:8px;height:calc(100vh - 112px);min-height:420px; }.video-card { width:142px;border-width:3px;border-radius:14px; }.video-card.is-stage { width:auto;border-width:4px;border-radius:18px; }.video-footer { padding:12px;font-size:10px; }.participants-panel { top:72px;right:10px;width:calc(100vw - 76px);height:auto;min-height:0; }.chat-panel { right:10px;bottom:10px;width:calc(100vw - 76px);height:360px;min-height:0; }.captions { bottom:120px;max-width:90%;font-size:11px; }.effects-menu { bottom:110px;left:8px; } }
 
 /* Wider collaboration panels and a taller, less-cropped speaker stage. */
 @media (min-width:1121px) {
@@ -57,8 +86,8 @@ body[data-filter='soft'] video { filter:brightness(1.05) saturate(.9) contrast(.
   .topbar { width:calc(100% + 356px); }
   .participants-panel,.chat-panel { width:340px; }
   .video-area { height:min(calc(100vh - 190px),720px);min-height:560px; }
-  .local-card video,.remote-card video { transform:scale(.92); }
-  .local-card,.remote-card { background:#cdd6e5; }
+  .video-card video { transform:scale(.92); }
+  .video-card { background:#cdd6e5; }
 }
 
 /* Balanced desktop proportions: a narrower, taller camera stage and roomy side cards. */
@@ -67,7 +96,7 @@ body[data-filter='soft'] video { filter:brightness(1.05) saturate(.9) contrast(.
   .participants-panel,.chat-panel { width:370px; }
   .meeting-app { padding-right:406px; }
   .topbar { width:calc(100% + 386px); }
-  .local-card video,.remote-card video { object-fit:contain;transform:scale(.94);background:#202a3b; }
+  .video-card video { object-fit:contain;transform:scale(.94);background:#202a3b; }
 }
 
 /* Full-bleed camera, wider collaboration column, and continuous workspace alignment. */
@@ -76,7 +105,7 @@ body[data-filter='soft'] video { filter:brightness(1.05) saturate(.9) contrast(.
   .topbar,.elapsed-area { width:calc(100% + 440px); }
   .participants-panel,.chat-panel { width:420px; }
   .video-area { max-width:none; }
-  .local-card video,.remote-card video { object-fit:cover;transform:none;background:#1d2433; }
+  .video-card video { object-fit:cover;transform:none;background:#1d2433; }
 }
 .speaker-wave { display:flex;opacity:.38; }
 .video-card.is-speaking .speaker-wave { opacity:1;filter:drop-shadow(0 0 5px rgba(86,225,201,.85)); }
@@ -114,7 +143,7 @@ body[data-filter='soft'] video { filter:brightness(1.05) saturate(.9) contrast(.
 .video-card.hand-raised { border-color:#f5c342!important;box-shadow:0 0 0 4px rgba(245,195,66,.72),0 0 27px rgba(245,195,66,.26),0 15px 34px rgba(43,48,63,.18)!important; }
 .video-card.hand-raised::after { position:absolute;z-index:12;top:18px;left:18px;display:grid;place-items:center;width:58px;height:58px;border:2px solid rgba(255,255,255,.9);border-radius:18px;background:linear-gradient(145deg,#ffe89c,#f5bf37);box-shadow:0 10px 22px rgba(137,92,0,.28);content:"✋";font-size:31px;line-height:1;animation:hand .8s ease-in-out infinite alternate; }
 .video-card.hand-raised .hand-indicator { display:none!important; }
-.remote-card.hand-raised::after { top:8px;left:8px;width:36px;height:36px;border-radius:12px;font-size:20px; }
+.video-card:not(.is-stage).hand-raised::after { top:8px;left:8px;width:36px;height:36px;border-radius:12px;font-size:20px; }
 
 /* Preserve the full native webcam frame instead of cropping it to the tile. */
-.local-card video,.remote-card video { object-fit:contain!important;transform:scale(.98);background:#1d2638; }
+.video-card video { object-fit:contain!important;transform:scale(.98);background:#1d2638; }
