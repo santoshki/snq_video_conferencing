@@ -3,13 +3,12 @@ import uuid
 import jwt
 import time
 
+from config import JWT_SECRET, JWT_ALGO, JWT_EXP_SECONDS
+from ws_server import start_signaling_server
+
 app = Flask(__name__)
 
 app.secret_key = "your_flask_session_secret"
-
-JWT_SECRET = "super_shared_secret_change_this"
-JWT_ALGO = "HS256"
-JWT_EXP_SECONDS = 3600  # 1 hour
 
 
 @app.route("/snq_login", methods=["GET", "POST"])
@@ -184,4 +183,10 @@ def logout():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    # use_reloader=False keeps this to a single process. With the reloader
+    # on, Flask spawns a child process that re-imports this module, and on
+    # Windows in particular the old process/socket doesn't always get
+    # cleaned up on restart, which causes "address already in use" (10048)
+    # errors on the signaling server's port.
+    start_signaling_server(port=8080)
+    app.run(debug=True, use_reloader=False)
