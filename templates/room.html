@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{ meeting_title if meeting_title else 'SnQ Meeting' }} | SnQ</title>
-  <link rel="stylesheet" href="{{ url_for('room_styles') }}?v=20260725-2">
+  <link rel="stylesheet" href="room_styles.css?v=20260725-2">
 </head>
 <body>
   <div id="toastContainer" aria-live="polite"></div>
@@ -71,7 +71,7 @@
           <button id="screenShareBtn" class="dock-button" onclick="toggleScreenShare()" title="Share screen"><span class="dock-icon dock-icon-share"></span><span class="sr-only">Share</span></button>
           <button id="effectsBtn" class="dock-button" title="Video presentation filters"><span class="dock-icon">✦</span><span class="sr-only">Effects</span></button>
           <button id="raiseHandBtn" class="dock-button" title="Raise hand"><span class="dock-icon">✋</span><span class="sr-only">Raise hand</span></button>
-          <button id="chatToggleBtn" class="dock-button" title="Open chat"><span class="dock-icon">◌</span><span class="sr-only">Chat</span></button>
+          <button id="chatToggleBtn" class="dock-button" title="Open chat"><span class="dock-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 14a4 4 0 0 1-4 4H9l-5 3v-7a4 4 0 0 1-1-2.7V8a4 4 0 0 1 4-4h9a4 4 0 0 1 4 4z"></path><path d="M8 11h8M8 14h5"></path></svg></span><span class="sr-only">Chat</span></button>
           <button id="exitMeetingBtn" class="dock-button leave" onclick="exitMeeting()" title="Leave meeting"><span class="dock-icon">↗</span><span class="sr-only">Leave</span></button>
         </div>
 
