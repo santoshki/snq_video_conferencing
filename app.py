@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, jsonify
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify, send_from_directory
 import json
 import os
 import uuid
@@ -11,6 +11,12 @@ import ws_server
 app = Flask(__name__)
 
 app.secret_key = FLASK_SECRET_KEY
+
+
+@app.get("/room_styles.css")
+def room_styles():
+    """Serve the meeting stylesheet explicitly for deployments that bypass /static."""
+    return send_from_directory(app.static_folder, "room_styles.css", max_age=0)
 
 # Attaches the /ws WebSocket route to this same Flask app/port instead of
 # spinning up a separate server on its own port (which Render can't expose).
