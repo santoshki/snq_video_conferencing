@@ -114,6 +114,11 @@ const rtcConfig = { iceServers: (ICE_SERVERS && ICE_SERVERS.length) ? ICE_SERVER
 // the same display name each get their own tile instead of colliding.
 const peers = new Map(); // cid -> { pc, user, tile, row, videoEnabled }
 const $ = id => document.getElementById(id);
+// Tracks whichever tile currently occupies the big main slot (starts as
+// the local user's own tile, matching the initial markup). Swapped
+// whenever a different participant is confirmed to be the active speaker.
+let mainCard = $("localCard");
+const speakerTimers = new Map(); // card -> pending "confirm speaking" timeout
 function getInitials(name) { const p = (name || "?").trim().split(/\s+/); return p.length > 1 ? (p[0][0] + p[p.length - 1][0]).toUpperCase() : p[0].slice(0, 2).toUpperCase(); }
 function showToast(text) { const t = document.createElement("div"); t.className = "snq-toast"; t.textContent = text; $("toastContainer").append(t); requestAnimationFrame(() => t.classList.add("show")); setTimeout(() => { t.classList.remove("show"); setTimeout(() => t.remove(), 300); }, 3000); }
 function sendSignal(type, extra = {}) { if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type, room: ROOM_ID, user: USERNAME, ...extra })); }
@@ -165,16 +170,25 @@ function removePeer(cid) {
   const entry = peers.get(cid);
   if (!entry) return;
   try { entry.pc.close(); } catch (e) {}
+  clearTimeout(speakerTimers.get(entry.tile));
+  speakerTimers.delete(entry.tile);
+  const wasMain = entry.tile === mainCard;
+  if (wasMain) { entry.tile.classList.remove("main-slot"); mainCard = null; }
   entry.tile.remove();
   entry.row.remove();
   peers.delete(cid);
+  if (wasMain) promoteToMain($("localCard"));
   setParticipantCount(participantCount);
 }
 function setInitialCameraOff() { if (!localStream) return; const track = localStream.getVideoTracks()[0]; if (!track) return; track.enabled = false; isVideoEnabled = false; $("disableVideoBtn").classList.add("off"); $("localVideoIcon").textContent = "Off"; $("localAvatar").classList.remove("hidden"); $("localVideo").classList.add("hidden"); }
 function startMeetingTimer() { meetingStartTime = Date.now(); meetingTimerInterval = setInterval(() => { const elapsed = Math.floor((Date.now() - meetingStartTime) / 1000); const h = Math.floor(elapsed / 3600), m = Math.floor(elapsed % 3600 / 60), s = elapsed % 60; const label = (h ? String(h).padStart(2, "0") + ":" : "") + String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0"); $("meetingTimer").textContent = label; $("recBadgeTime").textContent = label; }, 1000); }
 function startClock() { const tick = () => { $("clockNow").textContent = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); }; tick(); setInterval(tick, 15000); }
-function centerSpeakingTile(card) { const strip = $("remoteStrip"); const others = Array.from(strip.children).filter(el => el !== card && el.id !== "waitingHint"); if (!others.length) return; strip.insertBefore(card, others[Math.floor(others.length / 2)] || null); }
-function watchSpeaking(stream, card, speakerKey) { if (!stream || !stream.getAudioTracks().length) return; try { const context = new AudioContext(); const source = context.createMediaStreamSource(stream); const analyser = context.createAnalyser(); analyser.fftSize = 256; source.connect(analyser); const values = new Uint8Array(analyser.frequencyBinCount); const detect = () => { analyser.getByteFrequencyData(values); const level = values.reduce((sum, v) => sum + v, 0) / values.length; const speaking = level > 20 && !(speakerKey === "local" && !isAudioEnabled); const wasSpeaking = card.classList.contains("is-speaking"); card.classList.toggle("is-speaking", speaking); if (speaking && !wasSpeaking && speakerKey !== "local") centerSpeakingTile(card); requestAnimationFrame(detect); }; detect(); audioContexts.push(context); } catch (e) { console.debug("Speaker indicator unavailable", e); } }
+// Moves `card` into the big main slot, demoting whichever tile was there
+// (if any) down into the filmstrip. Works for the local tile and any
+// remote tile alike, since sizing is driven purely by DOM location
+// (.main-slot vs. inside #remoteStrip), not by which participant it is.
+function promoteToMain(card) { if (card === mainCard) return; const videoArea = $("videoArea"), strip = $("remoteStrip"); if (mainCard) { mainCard.classList.remove("main-slot"); strip.insertBefore(mainCard, $("waitingHint")); } card.classList.add("main-slot"); videoArea.insertBefore(card, strip); mainCard = card; }
+function watchSpeaking(stream, card, speakerKey) { if (!stream || !stream.getAudioTracks().length) return; try { const context = new AudioContext(); const source = context.createMediaStreamSource(stream); const analyser = context.createAnalyser(); analyser.fftSize = 256; source.connect(analyser); const values = new Uint8Array(analyser.frequencyBinCount); const detect = () => { analyser.getByteFrequencyData(values); const level = values.reduce((sum, v) => sum + v, 0) / values.length; const speaking = level > 20 && !(speakerKey === "local" && !isAudioEnabled); const wasSpeaking = card.classList.contains("is-speaking"); card.classList.toggle("is-speaking", speaking); if (speaking && !wasSpeaking) { clearTimeout(speakerTimers.get(card)); speakerTimers.set(card, setTimeout(() => { if (card.classList.contains("is-speaking")) promoteToMain(card); }, 700)); } else if (!speaking && wasSpeaking) { clearTimeout(speakerTimers.get(card)); } requestAnimationFrame(detect); }; detect(); audioContexts.push(context); } catch (e) { console.debug("Speaker indicator unavailable", e); } }
 function connectWebSocket() { try { const protocol = location.protocol === "https:" ? "wss" : "ws"; ws = new WebSocket(protocol + "://" + location.host + "/ws?token=" + encodeURIComponent(TOKEN)); ws.onopen = () => sendSignal("join"); ws.onmessage = async event => { let msg; try { msg = JSON.parse(event.data); } catch { return; } switch (msg.type) { case "room-info": await handleRoomInfo(msg); break; case "user-joined": handleUserJoined(msg); break; case "user-left": handleUserLeft(msg); break; case "offer": await handleOffer(msg); break; case "answer": await handleAnswer(msg); break; case "ice": await handleIce(msg); break; case "chat": addChatMessage(msg.user, msg.message); break; case "video-toggle": handleRemoteVideoToggle(msg); break; case "hand-raise": handleRemoteHand(msg); break; case "reaction": showReaction(msg.reaction, msg.user); break; } }; ws.onerror = () => showToast("Signalling service is unavailable."); } catch (e) { console.error(e); } }
 // Newcomer initiates: whoever just connected offers to every participant
 // already in the room (from room-info's roster). Existing participants
