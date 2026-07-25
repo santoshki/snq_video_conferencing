@@ -13,6 +13,19 @@ app = Flask(__name__)
 app.secret_key = FLASK_SECRET_KEY
 
 
+def normalize_meeting_id(raw_id):
+    """Canonicalize a meeting id so the same meeting always maps to the
+    same WebSocket room key, regardless of stray whitespace or casing
+    differences introduced by manual entry, copy/paste, or mobile
+    autocapitalize (e.g. "Abc-Def-123 " vs "abc-def-123" would otherwise
+    be treated as two different rooms and participants would never see
+    each other)."""
+    if not raw_id:
+        return None
+    normalized = raw_id.strip().lower()
+    return normalized or None
+
+
 @app.get("/room_styles.css")
 def room_styles():
     """Serve the meeting stylesheet explicitly for deployments that bypass /static."""
@@ -88,7 +101,7 @@ def home():
         # ======================================================
         if action == "create_meeting":
 
-            meeting_id = request.form.get("meeting_id")
+            meeting_id = normalize_meeting_id(request.form.get("meeting_id"))
             meeting_title = request.form.get("meeting_title")
 
             if not meeting_id:
@@ -113,7 +126,7 @@ def home():
         # ======================================================
         elif action == "join_meeting":
 
-            meeting_id = request.form.get("meeting_id")
+            meeting_id = normalize_meeting_id(request.form.get("meeting_id"))
             meeting_name = request.form.get("meeting_name")
 
             if not meeting_id:
@@ -165,6 +178,18 @@ def generate_meeting_id():
 
 @app.route("/meeting/<room_id>")
 def meeting_room(room_id):
+
+    normalized_room_id = normalize_meeting_id(room_id)
+    if not normalized_room_id:
+        return redirect(url_for("home"))
+
+    # Redirect to the canonical (lowercased/trimmed) URL if it differs, so
+    # every participant's browser bar, invite links, and JWT "room" claim
+    # all agree on the exact same string used as the WebSocket room key.
+    if normalized_room_id != room_id:
+        return redirect(url_for("meeting_room", room_id=normalized_room_id))
+
+    room_id = normalized_room_id
 
     username = session.get("user", "Guest")
 
