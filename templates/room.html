@@ -47,9 +47,11 @@
           </div>
         </article>
 
-        <article class="video-card wait-tile" id="waitingHint">
-          <div class="video-empty"><div class="empty-orb">⌁</div><p>Waiting for someone to join…</p><span>Invite a teammate to start collaborating</span></div>
-        </article>
+        <div class="remote-strip" id="remoteStrip">
+          <article class="video-card wait-tile" id="waitingHint">
+            <div class="video-empty"><div class="empty-orb">⌁</div><p>Waiting for someone to join…</p><span>Invite a teammate to start collaborating</span></div>
+          </article>
+        </div>
 
         <div id="captions" class="captions hidden" aria-live="polite"></div>
         <div id="effectsMenu" class="effects-menu hidden"><p>Presentation look</p><button data-filter="natural" class="selected">Natural</button><button data-filter="soft">Soft studio</button><button data-filter="mono">Monochrome</button><button data-filter="warm">Warm glow</button></div>
@@ -125,10 +127,10 @@ function createTile(cid, user) {
   article.className = "video-card remote-tile";
   article.dataset.cid = cid;
   article.innerHTML = `<video autoplay playsinline></video><div class="video-avatar hidden"><span>${getInitials(user)}</span></div><div class="video-empty"><div class="empty-orb">⌁</div><p>${safeUser}</p><span>Connecting…</span></div><div class="video-sheen"></div><div class="video-footer"><div class="speaker-info"><span class="speaker-wave" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="remote-label">${safeUser}</span><span class="remote-hand hand-indicator hidden">✋</span></div><span class="quality-badge">HD</span></div>`;
-  // Appended at the end of the grid — new tiles land in the next open
-  // slot (wrapping to a new row once the current one fills) rather than
-  // replacing or repositioning existing tiles.
-  $("videoArea").insertBefore(article, $("waitingHint"));
+  // Appended at the end of the filmstrip — new tiles land after the
+  // existing ones (wrapping to a second line if the strip fills) rather
+  // than replacing or repositioning tiles already there.
+  $("remoteStrip").insertBefore(article, $("waitingHint"));
   return article;
 }
 function addParticipantRow(cid, user) {
