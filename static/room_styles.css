@@ -69,6 +69,7 @@ body { overflow:auto;background:linear-gradient(115deg,#e7f5f1 0%,#f9fbfb 35%,#f
 .stat-chip,.top-action { border:1px solid #edf0f4;border-radius:9px;background:#fff;padding:7px 9px;color:#6b778a;font-size:10px;box-shadow:0 3px 8px rgba(40,58,80,.025); }.stat-chip:hover,.top-action:hover,.top-action.active { background:#f4f8fb;color:var(--consult-blue); }.stat-chip.static { background:#f9fbfc; }.stat-chip .chip-sub { color:#9aa3b1; }.secure-badge { border-color:#bfece4;background:#edfbf8;color:#54b8ab; }.top-action { display:none; }.profile-button { width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#d9eee9,#69b9ad);color:#fff; }.online-dot { border-color:#fff; }
 .meeting-title-line { display:none; }
 .video-area { order:1;display:block;flex:1;min-height:360px;margin:18px 0 0; }.video-card { border:1px solid #dbe4e7;border-radius:13px;background:#dce8e8;box-shadow:0 8px 20px rgba(44,78,82,.12); }.main-slot { height:100%;min-height:360px;border-radius:13px 13px 0 0; }.video-card video { background:#dbe7e7; }.video-sheen { background:linear-gradient(120deg,rgba(255,255,255,.19),transparent 38%,rgba(38,67,69,.08)); }.video-footer { padding:15px 19px;background:linear-gradient(transparent,rgba(19,42,45,.57));font-size:11px; }.quality-badge { border:0;background:rgba(255,255,255,.22); }.remote-strip { display:none; }
+#localVideo { transform:none !important; }
 .stage-badge { top:16px;left:17px;border-radius:5px;background:rgba(31,63,64,.46);font-size:10px; }.captions { bottom:90px; }.effects-menu { bottom:70px;left:17px;background:#fff;color:#526073;box-shadow:0 12px 25px rgba(38,65,69,.22); }.effects-menu button { color:#556277; }.effects-menu button:hover,.effects-menu button.selected { background:#eaf8f5;color:#329f92; }
 
 /* Turquoise consultation control bar */
@@ -80,3 +81,14 @@ body { overflow:auto;background:linear-gradient(115deg,#e7f5f1 0%,#f9fbfb 35%,#f
 
 @media (max-width:1050px) { .meeting-app { grid-template-columns:190px minmax(0,1fr);height:auto;min-height:700px;margin:0;border-radius:0; }.stage { min-height:700px;padding:20px; }.consultation-rail { padding:24px 15px; }.video-area { min-height:420px; }.main-slot { min-height:420px; }.visit-summary { margin-top:14px; } }
 @media (max-width:700px) { .meeting-app { display:block;min-height:100vh; }.consultation-rail { display:none; }.stage { min-height:100vh;padding:14px; }.stage-topbar { gap:5px; }.consultation-heading { min-width:0;flex:1; }.consultation-heading strong { font-size:13px; }.stat-chip.static,.secure-badge,.invite-chip { display:none; }.video-area { min-height:390px;margin-top:14px; }.main-slot { min-height:390px; }.dock-row { min-height:66px; }.dock-meta { display:none; }.control-dock { gap:4px; }.dock-button { width:35px;height:35px; }.dock-button.leave { width:39px;height:39px; }.visit-summary { padding:12px 13px; }.participants-panel { right:12px; }.chat-panel,.chat-panel.open { right:12px;width:calc(100vw - 24px); } }
+
+/* Keep chat alongside the consultation at desktop widths instead of floating over it. */
+@media (min-width:1200px) {
+  .meeting-app { grid-template-columns:220px minmax(650px,1fr) 360px;max-width:1600px; }
+  .consultation-rail { grid-column:1; }
+  .stage { grid-column:2; }
+  .sidebar { grid-column:3;display:flex;min-width:0;border-left:1px solid var(--consult-line);background:#fff; }
+  .chat-panel,.chat-panel.open { position:static;top:auto;right:auto;left:auto;display:flex;flex:1;width:auto;height:auto;min-height:0;border:0;border-radius:0;box-shadow:none;transform:none; }
+  .chat-panel:not(.open) { flex:0 0 0;opacity:0;pointer-events:none;transform:none;overflow:hidden; }
+  .participants-panel { right:calc((100vw - min(1600px, 100vw - 58px)) / 2 + 16px); }
+}
