@@ -4,15 +4,33 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{ meeting_title if meeting_title else 'SnQ Meeting' }} | SnQ</title>
-  <link rel="stylesheet" href="{{ url_for('room_styles') }}?v=20260725-3">
+  <link rel="stylesheet" href="{{ url_for('room_styles') }}?v=20260813-1">
 </head>
 <body>
   <div id="toastContainer" aria-live="polite"></div>
   <main class="meeting-app" id="meetingContainer">
+    <aside class="consultation-rail" aria-label="Consultation navigation">
+      <div class="rail-brand"><span class="brand-mark">S</span><span>snq<span class="brand-dot">.</span></span></div>
+      <button class="rail-primary" id="copyRoomBtnRail" type="button">Schedule an appointment</button>
+      <nav class="rail-nav" aria-label="Workspace sections">
+        <span class="rail-nav-item active">⌂ <span>Dashboard</span></span>
+        <span class="rail-nav-item">▦ <span>Calendar</span></span>
+        <span class="rail-nav-item">♙ <span>Patients</span></span>
+        <span class="rail-nav-item">⌕ <span>Call history</span></span>
+        <span class="rail-nav-item">▤ <span>Prescriptions</span></span>
+        <button class="rail-nav-item rail-chat-link" id="railChatBtn" type="button">◌ <span>Chats</span></button>
+      </nav>
+      <div class="rail-appointments">
+        <span class="rail-label">APPOINTMENTS</span>
+        <div class="rail-appointment current"><b>{{ username }}</b><small>In consultation</small></div>
+        <div class="rail-appointment"><b>Upcoming visits</b><small>Manage your schedule</small></div>
+      </div>
+      <div class="rail-user"><span class="avatar-gradient">{{ username[:1]|upper }}</span><span><b>{{ username }}</b><small>Available</small></span></div>
+    </aside>
 
     <section class="stage" id="stageShell">
       <header class="stage-topbar">
-        <div class="brand"><span class="brand-mark">S</span><span>snq<span class="brand-dot">.</span></span></div>
+        <div class="consultation-heading"><span class="consultation-kicker">E-CONSULTATION</span><strong>{{ meeting_title if meeting_title else 'SnQ Meeting' }}</strong></div>
 
         <button class="stat-chip" id="participantsToggle" title="Participants">
           <span class="stat-icon">👥</span><b id="participantCount">1</b><span>Participants</span>
@@ -56,6 +74,11 @@
         <div id="captions" class="captions hidden" aria-live="polite"></div>
         <div id="effectsMenu" class="effects-menu hidden"><p>Presentation look</p><button data-filter="natural" class="selected">Natural</button><button data-filter="soft">Soft studio</button><button data-filter="mono">Monochrome</button><button data-filter="warm">Warm glow</button></div>
       </div>
+
+      <section class="visit-summary" aria-label="Visit summary">
+        <span class="eyebrow">VISIT SUMMARY</span>
+        <p>Your secure video consultation is in progress. Use the controls below to manage audio, video, screen sharing and chat.</p>
+      </section>
 
       <div class="dock-row">
         <div class="dock-meta"><span id="clockNow">00:00</span><span class="dock-sep">|</span><span id="meetingTitleLabel">{{ meeting_title if meeting_title else 'SnQ Meeting' }}</span></div>
@@ -220,7 +243,7 @@ function toggleCaptions() { if (recognition) { recognition.stop(); recognition =
 function copyInvite() { const link = location.origin + "/meeting/" + encodeURIComponent(ROOM_ID); navigator.clipboard?.writeText(link).catch(() => { const input = document.createElement("textarea"); input.value = link; document.body.append(input); input.select(); document.execCommand("copy"); input.remove(); }); showToast("Meeting link copied"); }
 function exitMeeting() { clearInterval(meetingTimerInterval); sendSignal("leave"); peers.forEach(entry => { try { entry.pc.close(); } catch (e) {} }); peers.clear(); if (localStream) localStream.getTracks().forEach(track => track.stop()); audioContexts.forEach(context => context.close()); if (ws) ws.close(); location.href = "/home"; }
 async function initMedia() { try { localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true }); cameraTrack = localStream.getVideoTracks()[0] || null; $("localVideo").srcObject = localStream; $("localInitials").textContent = getInitials(USERNAME); watchSpeaking(localStream, $("localCard"), "local"); } catch (err) { console.error(err); showToast("Camera or microphone permission was not granted."); $("localAvatar").classList.remove("hidden"); } }
-$("sendBtn").onclick = sendChatMessage; $("chatInput").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); sendChatMessage(); } }); $("chatToggleBtn").onclick = () => $("chatPanel").classList.add("open"); $("closeChatBtn").onclick = () => $("chatPanel").classList.remove("open"); $("participantsToggle").onclick = () => $("participantsPanel").classList.toggle("compact-open"); $("closeParticipantsBtn").onclick = () => $("participantsPanel").classList.remove("compact-open"); $("copyRoomBtn").onclick = copyInvite; $("copyRoomBtnSide").onclick = copyInvite; $("raiseHandBtn").onclick = toggleHand; $("recordBtn").onclick = toggleRecording; $("captionBtn").onclick = toggleCaptions; document.querySelectorAll("[data-reaction]").forEach(b => b.onclick = () => sendReaction(b.dataset.reaction)); $("effectsBtn").onclick = () => $("effectsMenu").classList.toggle("hidden"); document.querySelectorAll("[data-filter]").forEach(b => b.onclick = () => setFilter(b.dataset.filter));
+$("sendBtn").onclick = sendChatMessage; $("chatInput").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); sendChatMessage(); } }); $("chatToggleBtn").onclick = () => $("chatPanel").classList.add("open"); $("railChatBtn").onclick = () => $("chatPanel").classList.add("open"); $("closeChatBtn").onclick = () => $("chatPanel").classList.remove("open"); $("participantsToggle").onclick = () => $("participantsPanel").classList.toggle("compact-open"); $("closeParticipantsBtn").onclick = () => $("participantsPanel").classList.remove("compact-open"); $("copyRoomBtn").onclick = copyInvite; $("copyRoomBtnSide").onclick = copyInvite; $("copyRoomBtnRail").onclick = copyInvite; $("raiseHandBtn").onclick = toggleHand; $("recordBtn").onclick = toggleRecording; $("captionBtn").onclick = toggleCaptions; document.querySelectorAll("[data-reaction]").forEach(b => b.onclick = () => sendReaction(b.dataset.reaction)); $("effectsBtn").onclick = () => $("effectsMenu").classList.toggle("hidden"); document.querySelectorAll("[data-filter]").forEach(b => b.onclick = () => setFilter(b.dataset.filter));
 $("reactionToggle").onclick = () => $("reactionBar").classList.toggle("hidden");
 $("muteAudioBtn").addEventListener("click", () => setTimeout(syncLocalMuteUI, 0));
 window.addEventListener("load", async () => { startMeetingTimer(); startClock(); await initMedia(); syncLocalMuteUI(); connectWebSocket(); if (ws) ws.onerror = event => console.error("WebSocket error:", event); }); window.addEventListener("beforeunload", () => sendSignal("leave"));
