@@ -101,6 +101,23 @@ body { overflow:auto;background:linear-gradient(115deg,#e7f5f1 0%,#f9fbfb 35%,#f
 
 /* Show connected guests as a compact picture-in-picture tile without changing the main view. */
 .video-area { position:relative; }
-.remote-strip { display:flex;position:absolute;z-index:9;top:16px;right:16px;width:210px;height:132px;padding:0;overflow:hidden; }
+.remote-strip { display:none; }
 .remote-strip .video-card { flex:1 1 auto;width:100%;height:100%;border-radius:10px;border-color:rgba(255,255,255,.48);box-shadow:0 10px 24px rgba(0,0,0,.28); }
 .remote-strip .video-footer { padding:8px 10px;font-size:10px; }
+
+/* Keep the guest preview separate from the main/admin video, in the lower-left rail. */
+.guest-preview-slot { display:none; }
+@media (min-width:1200px) {
+  .guest-preview-slot:not(:empty) { display:block;flex:0 0 118px;height:118px;margin-top:auto;margin-bottom:12px; }
+  .consultation-rail:has(.guest-preview-slot:not(:empty)) .rail-user { margin-top:0; }
+  .guest-preview-slot .video-card { width:100%;height:100%;border-radius:10px;box-shadow:0 7px 16px rgba(31,47,63,.2); }
+  .guest-preview-slot .video-footer { padding:7px 8px;font-size:9px; }
+  .guest-preview-slot .quality-badge { display:none; }
+}
+
+/* Keep the connected guest's tile above the signed-in admin at the lower-left. */
+@media (min-width:1200px) {
+  .remote-strip { display:flex;position:fixed;z-index:35;left:calc((100vw - min(1600px, 100vw - 58px)) / 2 + 20px);right:auto;top:auto;bottom:96px;width:180px;height:112px;padding:0;overflow:hidden; }
+  .remote-strip .video-card { flex:1 1 auto;width:100%;height:100%;border-radius:10px;border-color:rgba(255,255,255,.48);box-shadow:0 8px 18px rgba(31,47,63,.25); }
+  .remote-strip .video-footer { padding:7px 8px;font-size:9px; }
+}
