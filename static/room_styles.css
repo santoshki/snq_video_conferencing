@@ -121,3 +121,15 @@ body { overflow:auto;background:linear-gradient(115deg,#e7f5f1 0%,#f9fbfb 35%,#f
   .remote-strip .video-card { flex:1 1 auto;width:100%;height:100%;border-radius:10px;border-color:rgba(255,255,255,.48);box-shadow:0 8px 18px rgba(31,47,63,.25); }
   .remote-strip .video-footer { padding:7px 8px;font-size:9px; }
 }
+
+/* Each viewer sees the other participant in the large stage and themselves in the lower-left tile. */
+@media (min-width:1200px) {
+  #localCard { position:fixed;z-index:35;left:calc((100vw - min(1600px, 100vw - 58px)) / 2 + 20px);right:auto;top:auto;bottom:96px;width:180px;height:112px;min-height:0;border-radius:10px;border-color:rgba(255,255,255,.48);box-shadow:0 8px 18px rgba(31,47,63,.25); }
+  #localCard.main-slot { height:112px;min-height:0; }
+  #localCard .video-footer { padding:7px 8px;font-size:9px; }
+  #localCard .quality-badge { display:none; }
+  .remote-strip { display:block;position:absolute;z-index:8;inset:0;width:auto;height:auto;padding:0;overflow:hidden; }
+  .remote-strip .wait-tile { display:none; }
+  .remote-strip .remote-tile { position:absolute;inset:0;display:block;width:100%;height:100%;border-radius:13px;border-color:#dbe4e7;box-shadow:0 8px 20px rgba(44,78,82,.12); }
+  .remote-strip .remote-tile .video-footer { padding:15px 19px;font-size:11px; }
+}
