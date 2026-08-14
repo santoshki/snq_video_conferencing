@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{ meeting_title if meeting_title else 'SnQ Meeting' }} | SnQ</title>
-  <link rel="stylesheet" href="{{ url_for('room_styles') }}?v=20260815-6">
+  <link rel="stylesheet" href="{{ url_for('room_styles') }}?v=20260815-7">
 </head>
 <body>
   <div id="toastContainer" aria-live="polite"></div>
@@ -181,10 +181,18 @@ function getOrCreatePeer(cid, user) {
   peers.set(cid, entry);
   pc.ontrack = event => {
     const videoEl = tile.querySelector("video");
-    videoEl.srcObject = event.streams[0];
+    let remoteStream = event.streams && event.streams[0];
+    if (!remoteStream) {
+      remoteStream = videoEl.srcObject instanceof MediaStream ? videoEl.srcObject : new MediaStream();
+      if (!remoteStream.getTracks().some(track => track.id === event.track.id)) remoteStream.addTrack(event.track);
+    }
+    videoEl.autoplay = true;
+    videoEl.playsInline = true;
+    videoEl.srcObject = remoteStream;
     tile.querySelector(".video-empty").classList.add("hidden");
     if (entry.videoEnabled) { tile.querySelector(".video-avatar").classList.add("hidden"); videoEl.classList.remove("hidden"); }
-    watchSpeaking(event.streams[0], tile, cid);
+    videoEl.play().catch(err => console.debug("Remote video playback is waiting for browser permission", err));
+    watchSpeaking(remoteStream, tile, cid);
   };
   pc.onicecandidate = event => { if (event.candidate) sendSignal("ice", { candidate: event.candidate, target: cid }); };
   setParticipantCount(participantCount);
