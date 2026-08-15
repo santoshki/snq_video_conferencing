@@ -133,3 +133,15 @@ body { overflow:auto;background:linear-gradient(115deg,#e7f5f1 0%,#f9fbfb 35%,#f
   .remote-strip .remote-tile { position:absolute;inset:0;display:block;width:100%;height:100%;border-radius:13px;border-color:#dbe4e7;box-shadow:0 8px 20px rgba(44,78,82,.12); }
   .remote-strip .remote-tile .video-footer { padding:15px 19px;font-size:11px; }
 }
+
+/* Mobile keeps both participants visible: remote in the stage, local in a compact overlay. */
+@media (max-width:1199px) {
+  #localCard { position:absolute;z-index:12;right:12px;bottom:12px;left:auto;width:128px;height:86px;min-height:0;border:2px solid rgba(255,255,255,.88);border-radius:10px;box-shadow:0 8px 18px rgba(0,0,0,.28); }
+  #localCard.main-slot { height:86px;min-height:0; }
+  #localCard .video-footer { padding:5px 7px;font-size:8px; }
+  #localCard .quality-badge { display:none; }
+  .remote-strip { display:block;position:absolute;z-index:8;inset:0;width:auto;height:auto;padding:0;overflow:hidden; }
+  .remote-strip .wait-tile { display:none; }
+  .remote-strip .remote-tile { position:absolute;inset:0;display:block;width:100%;height:100%;border-radius:13px;border-color:#dbe4e7;box-shadow:0 8px 20px rgba(44,78,82,.12); }
+  .remote-strip .remote-tile .video-footer { padding:13px 15px;font-size:10px; }
+}
