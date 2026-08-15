@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{ meeting_title if meeting_title else 'SnQ Meeting' }} | SnQ</title>
-  <link rel="stylesheet" href="{{ url_for('room_styles') }}?v=20260815-7">
+  <link rel="stylesheet" href="{{ url_for('room_styles') }}?v=20260815-8">
 </head>
 <body>
   <div id="toastContainer" aria-live="polite"></div>
@@ -137,6 +137,7 @@ const rtcConfig = { iceServers: (ICE_SERVERS && ICE_SERVERS.length) ? ICE_SERVER
 // Keyed by connection id (cid), not username, so two tabs/devices with
 // the same display name each get their own tile instead of colliding.
 const peers = new Map(); // cid -> { pc, user, tile, row, videoEnabled }
+const pendingIceByPeer = new Map(); // cid -> ICE candidates received before a peer exists
 const $ = id => document.getElementById(id);
 // Tracks whichever tile currently occupies the big main slot (starts as
 // the local user's own tile, matching the initial markup). Swapped
@@ -177,7 +178,8 @@ function getOrCreatePeer(cid, user) {
   if (localStream) localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
   const tile = createTile(cid, user);
   const row = addParticipantRow(cid, user);
-  entry = { pc, user, tile, row, videoEnabled: true };
+  entry = { pc, user, tile, row, videoEnabled: true, pendingCandidates: pendingIceByPeer.get(cid) || [] };
+  pendingIceByPeer.delete(cid);
   peers.set(cid, entry);
   pc.ontrack = event => {
     const videoEl = tile.querySelector("video");
@@ -232,9 +234,10 @@ function handleUserJoined(msg) { setParticipantCount(typeof msg.count === "numbe
 function handleUserLeft(msg) { setParticipantCount(typeof msg.count === "number" ? msg.count : participantCount - 1); if (msg.user) { showToast(msg.user + " left the meeting"); addSystemChatMessage(msg.user + " left the meeting"); } if (msg.cid) removePeer(msg.cid); }
 function handleRemoteVideoToggle(msg) { const entry = peers.get(msg.cid); if (!entry) return; entry.videoEnabled = !!msg.enabled; entry.tile.querySelector(".video-avatar").classList.toggle("hidden", entry.videoEnabled); entry.tile.querySelector("video").classList.toggle("hidden", !entry.videoEnabled); const icon = entry.row.querySelector(".p-video"); if (icon) icon.textContent = entry.videoEnabled ? "▣" : "▧"; }
 function handleRemoteHand(msg) { const entry = peers.get(msg.cid); if (!entry) return; const show = !!msg.raised; entry.tile.querySelector(".remote-hand").classList.toggle("hidden", !show); entry.tile.classList.toggle("hand-raised", show); entry.row.classList.toggle("hand-raised", show); if (show) showToast((msg.user || "A participant") + " raised a hand"); }
-async function handleOffer(msg) { const entry = getOrCreatePeer(msg.cid, msg.user); await entry.pc.setRemoteDescription(msg.offer); const answer = await entry.pc.createAnswer(); await entry.pc.setLocalDescription(answer); sendSignal("answer", { answer, target: msg.cid }); }
-async function handleAnswer(msg) { const entry = peers.get(msg.cid); if (entry) await entry.pc.setRemoteDescription(msg.answer); }
-async function handleIce(msg) { const entry = peers.get(msg.cid); if (entry && msg.candidate) { try { await entry.pc.addIceCandidate(msg.candidate); } catch (e) { console.error(e); } } }
+async function flushPendingIce(entry) { if (!entry || !entry.pc.remoteDescription) return; while (entry.pendingCandidates.length) { const candidate = entry.pendingCandidates.shift(); try { await entry.pc.addIceCandidate(candidate); } catch (e) { console.error("Unable to apply queued ICE candidate", e); } } }
+async function handleOffer(msg) { const entry = getOrCreatePeer(msg.cid, msg.user); await entry.pc.setRemoteDescription(msg.offer); await flushPendingIce(entry); const answer = await entry.pc.createAnswer(); await entry.pc.setLocalDescription(answer); sendSignal("answer", { answer, target: msg.cid }); }
+async function handleAnswer(msg) { const entry = peers.get(msg.cid); if (entry) { await entry.pc.setRemoteDescription(msg.answer); await flushPendingIce(entry); } }
+async function handleIce(msg) { if (!msg.cid || !msg.candidate) return; const entry = peers.get(msg.cid); if (!entry) { const pending = pendingIceByPeer.get(msg.cid) || []; pending.push(msg.candidate); pendingIceByPeer.set(msg.cid, pending); return; } if (!entry.pc.remoteDescription) { entry.pendingCandidates.push(msg.candidate); return; } try { await entry.pc.addIceCandidate(msg.candidate); } catch (e) { console.error("Unable to apply ICE candidate", e); } }
 function toggleAudio() { if (!localStream) return; const track = localStream.getAudioTracks()[0]; if (!track) return; track.enabled = !track.enabled; isAudioEnabled = track.enabled; $("muteAudioBtn").classList.toggle("off", !isAudioEnabled); $("localMicIcon").textContent = isAudioEnabled ? "🎙" : "🔇"; syncLocalMuteUI(); }
 function toggleVideo() { if (!localStream) return; const track = localStream.getVideoTracks()[0]; if (!track) return; track.enabled = !track.enabled; isVideoEnabled = track.enabled; $("disableVideoBtn").classList.toggle("off", !isVideoEnabled); $("localVideoIcon").textContent = isVideoEnabled ? "▣" : "▧"; $("localAvatar").classList.toggle("hidden", isVideoEnabled); $("localVideo").classList.toggle("hidden", !isVideoEnabled); sendSignal("video-toggle", { enabled: isVideoEnabled }); }
 async function toggleScreenShare() { if (!isScreenSharing) { try { const display = await navigator.mediaDevices.getDisplayMedia({ video: true }); const screenTrack = display.getVideoTracks()[0]; peers.forEach(entry => { const sender = entry.pc.getSenders().find(s => s.track && s.track.kind === "video"); if (sender) sender.replaceTrack(screenTrack); }); $("localVideo").srcObject = display; isScreenSharing = true; $("screenShareBtn").classList.add("active"); screenTrack.onended = stopScreenShare; } catch (e) { console.error(e); } } else stopScreenShare(); }
