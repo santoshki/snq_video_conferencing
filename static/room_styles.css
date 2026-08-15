@@ -130,7 +130,6 @@ body { overflow:auto;background:linear-gradient(115deg,#e7f5f1 0%,#f9fbfb 35%,#f
   #localCard .quality-badge { display:none; }
   .remote-strip { display:block;position:absolute;z-index:8;inset:0;width:auto;height:auto;padding:0;overflow:hidden; }
   .remote-strip .wait-tile { position:absolute;inset:0;display:flex;width:100%;height:100%;border-radius:13px; }
-  .video-area:has(#waitingHint:not(.hidden)) #localCard { display:none; }
   .remote-strip .remote-tile { position:absolute;inset:0;display:block;width:100%;height:100%;border-radius:13px;border-color:#dbe4e7;box-shadow:0 8px 20px rgba(44,78,82,.12); }
   .remote-strip .remote-tile .video-footer { padding:15px 19px;font-size:11px; }
 }
@@ -143,7 +142,17 @@ body { overflow:auto;background:linear-gradient(115deg,#e7f5f1 0%,#f9fbfb 35%,#f
   #localCard .quality-badge { display:none; }
   .remote-strip { display:block;position:absolute;z-index:8;inset:0;width:auto;height:auto;padding:0;overflow:hidden; }
   .remote-strip .wait-tile { position:absolute;inset:0;display:flex;width:100%;height:100%;border-radius:13px; }
-  .video-area:has(#waitingHint:not(.hidden)) #localCard { display:none; }
   .remote-strip .remote-tile { position:absolute;inset:0;display:block;width:100%;height:100%;border-radius:13px;border-color:#dbe4e7;box-shadow:0 8px 20px rgba(44,78,82,.12); }
   .remote-strip .remote-tile .video-footer { padding:13px 15px;font-size:10px; }
+}
+
+/* On phones, retain only the signed-in user block beneath the local preview. */
+@media (max-width:700px) {
+  .consultation-rail { display:block;position:fixed;z-index:37;left:12px;bottom:10px;width:128px;min-height:0;padding:0;border:0;background:transparent; }
+  .consultation-rail > :not(.rail-user) { display:none!important; }
+  .consultation-rail .rail-user { display:flex;gap:7px;margin:0;border:0;border-radius:8px;background:rgba(255,255,255,.96);padding:6px;box-shadow:0 5px 14px rgba(31,47,63,.16); }
+  .consultation-rail .rail-user .avatar-gradient { flex-basis:24px;width:24px;height:24px;font-size:9px; }
+  .consultation-rail .rail-user b { max-width:79px;font-size:9px; }
+  .consultation-rail .rail-user small { font-size:8px; }
+  #localCard { position:fixed;z-index:38;right:auto;bottom:53px;left:12px;width:128px;height:86px; }
 }
