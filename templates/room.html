@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{ meeting_title if meeting_title else 'SnQ Meeting' }} | SnQ</title>
-  <link rel="stylesheet" href="{{ url_for('room_styles') }}?v=20260815-9">
+  <link rel="stylesheet" href="{{ url_for('room_styles') }}?v=20260815-10">
 </head>
 <body>
   <div id="toastContainer" aria-live="polite"></div>
@@ -147,7 +147,7 @@ const speakerTimers = new Map(); // card -> pending "confirm speaking" timeout
 function getInitials(name) { const p = (name || "?").trim().split(/\s+/); return p.length > 1 ? (p[0][0] + p[p.length - 1][0]).toUpperCase() : p[0].slice(0, 2).toUpperCase(); }
 function showToast(text) { const t = document.createElement("div"); t.className = "snq-toast"; t.textContent = text; $("toastContainer").append(t); requestAnimationFrame(() => t.classList.add("show")); setTimeout(() => { t.classList.remove("show"); setTimeout(() => t.remove(), 300); }, 3000); }
 function sendSignal(type, extra = {}) { if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type, room: ROOM_ID, user: USERNAME, ...extra })); }
-function setParticipantCount(count) { participantCount = Math.max(1, count); $("participantCount").textContent = participantCount; $("participantCountPanel").textContent = participantCount; $("waitingHint").classList.toggle("hidden", peers.size > 0); }
+function setParticipantCount(count) { participantCount = Math.max(1, count); $("participantCount").textContent = participantCount; $("participantCountPanel").textContent = participantCount; $("waitingHint").classList.toggle("hidden", participantCount > 1); }
 function syncLocalMuteUI() { const wave = $("localCard").querySelector(".speaker-wave"); const row = $("participantList").querySelector(".participant-row.you"); wave.classList.toggle("muted", !isAudioEnabled); $("localCard").classList.toggle("is-muted", !isAudioEnabled); row.classList.toggle("is-unmuted", isAudioEnabled); $("chatPanel").classList.toggle("is-unmuted", isAudioEnabled); }
 
 // ---- Per-participant tile + roster row -------------------------------
@@ -175,10 +175,10 @@ function getOrCreatePeer(cid, user) {
   let entry = peers.get(cid);
   if (entry) return entry;
   const pc = new RTCPeerConnection(rtcConfig);
-  if (localStream) localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+  const senders = localStream ? localStream.getTracks().map(track => pc.addTrack(track, localStream)) : [];
   const tile = createTile(cid, user);
   const row = addParticipantRow(cid, user);
-  entry = { pc, user, tile, row, videoEnabled: true, pendingCandidates: pendingIceByPeer.get(cid) || [] };
+  entry = { pc, user, tile, row, videoEnabled: true, videoSender: senders.find(sender => sender.track && sender.track.kind === "video") || null, pendingCandidates: pendingIceByPeer.get(cid) || [] };
   pendingIceByPeer.delete(cid);
   peers.set(cid, entry);
   pc.ontrack = event => {
@@ -214,7 +214,7 @@ function removePeer(cid) {
   if (wasMain) promoteToMain($("localCard"));
   setParticipantCount(participantCount);
 }
-function setInitialCameraOff() { if (!localStream) return; const track = localStream.getVideoTracks()[0]; if (!track) return; track.enabled = false; isVideoEnabled = false; $("disableVideoBtn").classList.add("off"); $("localVideoIcon").textContent = "Off"; $("localAvatar").classList.remove("hidden"); $("localVideo").classList.add("hidden"); }
+async function setInitialCameraOff() { await toggleVideo(); }
 function startMeetingTimer() { meetingStartTime = Date.now(); meetingTimerInterval = setInterval(() => { const elapsed = Math.floor((Date.now() - meetingStartTime) / 1000); const h = Math.floor(elapsed / 3600), m = Math.floor(elapsed % 3600 / 60), s = elapsed % 60; const label = (h ? String(h).padStart(2, "0") + ":" : "") + String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0"); $("meetingTimer").textContent = label; $("recBadgeTime").textContent = label; }, 1000); }
 function startClock() { const tick = () => { $("clockNow").textContent = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); }; tick(); setInterval(tick, 15000); }
 // Moves `card` into the big main slot, demoting whichever tile was there
@@ -239,9 +239,12 @@ async function handleOffer(msg) { const entry = getOrCreatePeer(msg.cid, msg.use
 async function handleAnswer(msg) { const entry = peers.get(msg.cid); if (entry) { await entry.pc.setRemoteDescription(msg.answer); await flushPendingIce(entry); } }
 async function handleIce(msg) { if (!msg.cid || !msg.candidate) return; const entry = peers.get(msg.cid); if (!entry) { const pending = pendingIceByPeer.get(msg.cid) || []; pending.push(msg.candidate); pendingIceByPeer.set(msg.cid, pending); return; } if (!entry.pc.remoteDescription) { entry.pendingCandidates.push(msg.candidate); return; } try { await entry.pc.addIceCandidate(msg.candidate); } catch (e) { console.error("Unable to apply ICE candidate", e); } }
 function toggleAudio() { if (!localStream) return; const track = localStream.getAudioTracks()[0]; if (!track) return; track.enabled = !track.enabled; isAudioEnabled = track.enabled; $("muteAudioBtn").classList.toggle("off", !isAudioEnabled); $("localMicIcon").textContent = isAudioEnabled ? "🎙" : "🔇"; syncLocalMuteUI(); }
-function toggleVideo() { if (!localStream) return; const track = localStream.getVideoTracks()[0]; if (!track) return; track.enabled = !track.enabled; isVideoEnabled = track.enabled; $("disableVideoBtn").classList.toggle("off", !isVideoEnabled); $("localVideoIcon").textContent = isVideoEnabled ? "▣" : "▧"; $("localAvatar").classList.toggle("hidden", isVideoEnabled); $("localVideo").classList.toggle("hidden", !isVideoEnabled); sendSignal("video-toggle", { enabled: isVideoEnabled }); }
-async function toggleScreenShare() { if (!isScreenSharing) { try { const display = await navigator.mediaDevices.getDisplayMedia({ video: true }); const screenTrack = display.getVideoTracks()[0]; peers.forEach(entry => { const sender = entry.pc.getSenders().find(s => s.track && s.track.kind === "video"); if (sender) sender.replaceTrack(screenTrack); }); $("localVideo").srcObject = display; isScreenSharing = true; $("screenShareBtn").classList.add("active"); screenTrack.onended = stopScreenShare; } catch (e) { console.error(e); } } else stopScreenShare(); }
-function stopScreenShare() { peers.forEach(entry => { const sender = entry.pc.getSenders().find(s => s.track && s.track.kind === "video"); if (sender && cameraTrack) sender.replaceTrack(cameraTrack); }); if (localStream) $("localVideo").srcObject = localStream; isScreenSharing = false; $("screenShareBtn").classList.remove("active"); }
+function getVideoSender(entry) { if (entry.videoSender) return entry.videoSender; entry.videoSender = entry.pc.getSenders().find(sender => sender.track && sender.track.kind === "video") || null; return entry.videoSender; }
+async function replaceOutgoingVideoTrack(track) { await Promise.all([...peers.values()].map(entry => { const sender = getVideoSender(entry); return sender ? sender.replaceTrack(track) : Promise.resolve(); })); }
+function syncVideoUI() { $("disableVideoBtn").classList.toggle("off", !isVideoEnabled); $("localVideoIcon").textContent = isVideoEnabled ? "▣" : "▧"; $("localAvatar").classList.toggle("hidden", isVideoEnabled); $("localVideo").classList.toggle("hidden", !isVideoEnabled && !isScreenSharing); sendSignal("video-toggle", { enabled: isVideoEnabled }); }
+async function toggleVideo() { if (isVideoEnabled) { if (!isScreenSharing) await replaceOutgoingVideoTrack(null); if (cameraTrack) { if (localStream) localStream.removeTrack(cameraTrack); cameraTrack.stop(); cameraTrack = null; } isVideoEnabled = false; syncVideoUI(); return; } try { const cameraStream = await navigator.mediaDevices.getUserMedia({ video: true }); const newTrack = cameraStream.getVideoTracks()[0]; if (!newTrack) throw new Error("No camera track available"); if (!localStream) localStream = new MediaStream(); localStream.getVideoTracks().forEach(track => localStream.removeTrack(track)); localStream.addTrack(newTrack); cameraTrack = newTrack; isVideoEnabled = true; if (!isScreenSharing) { await replaceOutgoingVideoTrack(newTrack); $("localVideo").srcObject = localStream; } syncVideoUI(); } catch (err) { console.error(err); showToast("Camera could not be turned on."); } }
+async function toggleScreenShare() { if (!isScreenSharing) { try { const display = await navigator.mediaDevices.getDisplayMedia({ video: true }); const screenTrack = display.getVideoTracks()[0]; await replaceOutgoingVideoTrack(screenTrack); $("localVideo").srcObject = display; isScreenSharing = true; $("screenShareBtn").classList.add("active"); screenTrack.onended = stopScreenShare; } catch (e) { console.error(e); } } else stopScreenShare(); }
+async function stopScreenShare() { await replaceOutgoingVideoTrack(isVideoEnabled ? cameraTrack : null); if (localStream && isVideoEnabled) $("localVideo").srcObject = localStream; isScreenSharing = false; $("screenShareBtn").classList.remove("active"); syncVideoUI(); }
 function sendChatMessage() { const input = $("chatInput"), message = input.value.trim(); if (!message) return; sendSignal("chat", { message }); addChatMessage("Me", message); input.value = ""; }
 function addChatMessage(user, message) { const isMe = user === "Me"; const msg = document.createElement("div"); msg.className = "chat-message" + (isMe ? " me" : ""); msg.innerHTML = `<span class="chat-avatar">${getInitials(isMe ? USERNAME : user)}</span><div class="chat-bubble"><strong>${isMe ? "You" : safeText(user)}</strong><p>${safeText(message)}</p><small>${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</small></div>`; $("messages").append(msg); $("messages").scrollTop = $("messages").scrollHeight; }
 function safeText(text) { const div = document.createElement("div"); div.textContent = text; return div.innerHTML; }
