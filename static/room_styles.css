@@ -105,12 +105,18 @@ body { overflow:auto;background:linear-gradient(115deg,#e7f5f1 0%,#f9fbfb 35%,#f
 .remote-strip .video-card { flex:1 1 auto;width:100%;height:100%;border-radius:10px;border-color:rgba(255,255,255,.48);box-shadow:0 10px 24px rgba(0,0,0,.28); }
 .remote-strip .video-footer { padding:8px 10px;font-size:10px; }
 
-/* Keep the guest preview separate from the main/admin video, in the lower-left rail. */
+/* Dock the local (self) preview in the rail — below "Upcoming visits" and above the
+   signed-in admin row — instead of floating it over the stage video. JS moves #localCard
+   into this slot at desktop widths (see placeLocalCard()). */
 .guest-preview-slot { display:none; }
 @media (min-width:1200px) {
   .guest-preview-slot:not(:empty) { display:block;flex:0 0 118px;height:118px;margin-top:auto;margin-bottom:12px; }
   .consultation-rail:has(.guest-preview-slot:not(:empty)) .rail-user { margin-top:0; }
-  .guest-preview-slot .video-card { width:100%;height:100%;border-radius:10px;box-shadow:0 7px 16px rgba(31,47,63,.2); }
+  .guest-preview-slot .video-card { position:relative;width:100%;height:100%;border-radius:10px;box-shadow:0 7px 16px rgba(31,47,63,.2); }
+  /* #localCard keeps its "main-slot" class from the big-stage markup; that class carries a
+     360px min-height meant for the large slot elsewhere in this stylesheet, which was blowing
+     the tile out past the rail's clipped bounds. Reset it back to fill this 118px slot. */
+  .guest-preview-slot .video-card.main-slot { height:100%;min-height:0; }
   .guest-preview-slot .video-footer { padding:7px 8px;font-size:9px; }
   .guest-preview-slot .quality-badge { display:none; }
 }
@@ -122,16 +128,13 @@ body { overflow:auto;background:linear-gradient(115deg,#e7f5f1 0%,#f9fbfb 35%,#f
   .remote-strip .video-footer { padding:7px 8px;font-size:9px; }
 }
 
-/* Each viewer sees the other participant in the large stage and themselves in the lower-left tile. */
+/* Each viewer sees the other participant in the large stage; the remote filmstrip fills it entirely. */
 @media (min-width:1200px) {
-  #localCard { position:fixed;z-index:35;left:calc((100vw - min(1600px, 100vw - 58px)) / 2 + 20px);right:auto;top:auto;bottom:96px;width:180px;height:112px;min-height:0;border-radius:10px;border-color:rgba(255,255,255,.48);box-shadow:0 8px 18px rgba(31,47,63,.25); }
-  #localCard.main-slot { height:112px;min-height:0; }
-  #localCard .video-footer { padding:7px 8px;font-size:9px; }
-  #localCard .quality-badge { display:none; }
   .remote-strip { display:block;position:absolute;z-index:8;inset:0;width:auto;height:auto;padding:0;overflow:hidden; }
   .remote-strip .wait-tile { position:absolute;inset:0;display:flex;width:100%;height:100%;border-radius:13px; }
   .remote-strip .remote-tile { position:absolute;inset:0;display:block;width:100%;height:100%;border-radius:13px;border-color:#dbe4e7;box-shadow:0 8px 20px rgba(44,78,82,.12); }
   .remote-strip .remote-tile .video-footer { padding:15px 19px;font-size:11px; }
+  /* Self-view moves out of the stage entirely and docks in the rail (see .guest-preview-slot), so it no longer floats over the video or the visit-summary text below it. */
 }
 
 /* Mobile keeps both participants visible: remote in the stage, local in a compact overlay. */
@@ -155,4 +158,13 @@ body { overflow:auto;background:linear-gradient(115deg,#e7f5f1 0%,#f9fbfb 35%,#f
   .consultation-rail .rail-user b { max-width:79px;font-size:9px; }
   .consultation-rail .rail-user small { font-size:8px; }
   #localCard { position:fixed;z-index:38;right:auto;bottom:53px;left:12px;width:128px;height:86px; }
+}
+
+/* Main-stage subtitles and a matching CC control. */
+.captions { z-index:24;bottom:24px;max-width:min(78%,760px);border:1px solid rgba(86,207,193,.72);border-radius:11px;background:rgba(18,36,43,.88);padding:11px 16px;color:#fff;font-size:14px;font-weight:700;line-height:1.45;box-shadow:0 9px 22px rgba(0,0,0,.24); }
+.caption-dock-button .dock-icon { width:auto;font:800 10px/1 'DM Sans',Arial,sans-serif;letter-spacing:.2px; }.caption-dock-button.active { background:rgba(255,255,255,.92);color:#319e92;box-shadow:0 0 0 2px rgba(255,255,255,.28); }
+
+/* Use the available desktop viewport without changing the internal layout. */
+@media (min-width:1200px) {
+  .meeting-app { width:calc(100vw - 20px);max-width:none;height:calc(100vh - 20px);margin:10px auto; }
 }
