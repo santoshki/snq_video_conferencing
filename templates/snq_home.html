@@ -2,326 +2,148 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SnQ Home</title>
-
-    <!-- Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-
-    <!-- CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='snq_home_screen_style.css') }}">
 </head>
-
 <body>
+    <div class="wave-bg" aria-hidden="true"><span></span><span></span><span></span></div>
 
-<!-- 🌊 BACKGROUND -->
-<div class="wave-bg">
-    <span></span>
-    <span></span>
-    <span></span>
-</div>
-
-<!-- 🔹 SIDEBAR -->
-<aside class="sidebar">
-    <div class="sidebar-title">SnQ Home</div>
-
-    <nav class="sidebar-menu">
-
-        <a href="#" class="active">
-            <i class="fas fa-house"></i>
-            Home
+    <aside class="sidebar">
+        <a class="brand" href="#" aria-label="SnQ home">
+            <span class="brand-mark"><i class="fas fa-video"></i></span><span>SnQ</span>
         </a>
+        <nav class="sidebar-menu" aria-label="Main navigation">
+            <a href="#" class="active" aria-current="page"><i class="fas fa-house"></i><span>Home</span></a>
+            <a href="#"><i class="fas fa-calendar-days"></i><span>Upcoming Appointments</span></a>
+            <a href="#"><i class="fas fa-clock-rotate-left"></i><span>Consultation History</span></a>
+            <a href="#"><i class="fas fa-users"></i><span>Contacts</span></a>
+            <a href="#"><i class="fas fa-folder-open"></i><span>Recordings</span></a>
+            <a href="#"><i class="fas fa-share-nodes"></i><span>Shared Files</span></a>
+            <a href="#"><i class="fas fa-chart-line"></i><span>Dashboard</span></a>
+            <a href="#"><i class="fas fa-bell"></i><span>Notifications</span></a>
+            <a href="#"><i class="fas fa-user-gear"></i><span>Profile</span></a>
+            <a href="#"><i class="fas fa-gear"></i><span>Settings</span></a>
+            <a href="#help"><i class="fas fa-circle-question"></i><span>Help &amp; Support</span></a>
+            <a href="#"><i class="fas fa-circle-info"></i><span>About SnQ</span></a>
+        </nav>
+        <a href="{{ url_for('logout') }}" class="logout-button"><i class="fas fa-right-from-bracket"></i><span>Logout</span></a>
+    </aside>
 
-        <a href="#">
-            <i class="fas fa-calendar-days"></i>
-            Scheduled Meetings
-        </a>
+    <header class="top-bar">
+        <p>Welcome, {{ username }}!</p>
+        <span class="security-status"><i class="fas fa-lock"></i> Secure connection</span>
+    </header>
 
-        <a href="#">
-            <i class="fas fa-clock-rotate-left"></i>
-            Meeting History
-        </a>
-
-        <a href="#">
-            <i class="fas fa-users"></i>
-            Contacts
-        </a>
-
-        <a href="#">
-            <i class="fas fa-folder-open"></i>
-            Recordings
-        </a>
-
-        <a href="#">
-            <i class="fas fa-share-nodes"></i>
-            Shared Files
-        </a>
-
-        <a href="#">
-            <i class="fas fa-chart-line"></i>
-            Dashboard
-        </a>
-
-        <a href="#">
-            <i class="fas fa-bell"></i>
-            Notifications
-        </a>
-
-        <a href="#">
-            <i class="fas fa-user-gear"></i>
-            Profile
-        </a>
-
-        <a href="#">
-            <i class="fas fa-gear"></i>
-            Settings
-        </a>
-
-        <a href="#">
-            <i class="fas fa-circle-question"></i>
-            Help & Support
-        </a>
-
-        <a href="#">
-            <i class="fas fa-circle-info"></i>
-            About SnQ
-        </a>
-
-        <div class="logout-wrapper">
-            <a href="{{ url_for('logout') }}" class="logout-button">
-                <i class="fas fa-right-from-bracket"></i>
-                Logout
-            </a>
-        </div>
-
-    </nav>
-</aside>
-
-<!-- 🔝 TOP BAR -->
-<header class="top-bar">
-    <div class="top-bar-title">Welcome, {{ username }}!</div>
-</header>
-
-<!-- 📄 MAIN -->
-<main class="page-content">
-  <div class="dashboard">
-
-    <section class="hero-card">
-      <h1>Good Day, {{ username }} 👋</h1>
-      <p>Connect with your team, schedule meetings, and collaborate securely from one place.</p>
-    </section>
-
-    <section class="quick-actions">
-
-    <div class="action-card new-meeting" onclick="openModal()">
-        <div class="action-icon">
-            <i class="fas fa-video"></i>
-        </div>
-
-        <div class="action-title">
-            New Meeting
-        </div>
-
-        <div class="action-subtitle">
-            Start an instant secure meeting
-        </div>
-    </div>
-
-    <div class="action-card join-meeting" onclick="openJoinModal()">
-        <div class="action-icon">
-            <i class="fas fa-key"></i>
-        </div>
-
-        <div class="action-title">
-            Join Meeting
-        </div>
-
-        <div class="action-subtitle">
-            Enter a meeting code
-        </div>
-    </div>
-
-    <div class="action-card schedule-meeting">
-        <div class="action-icon">
-            <i class="fas fa-calendar-plus"></i>
-        </div>
-        <div class="action-title">
-            Schedule Meeting
-        </div>
-        <div class="action-subtitle">
-            Plan future meetings
-        </div>
-    </div>
-</section>
-
-    <section class="dashboard-grid">
-      <div class="dashboard-card">
-        <h3>📅 Upcoming Meetings</h3>
-        <ul>
-          <li>10:00 AM – Engineering Standup</li>
-          <li>2:30 PM – Client Demo</li>
-          <li>Tomorrow – Sprint Planning</li>
-        </ul>
-      </div>
-
-      <div class="dashboard-card">
-        <h3>🕒 Recent Meetings</h3>
-        <ul>
-          <li>API Security Review</li>
-          <li>Architecture Discussion</li>
-          <li>Weekly Sync</li>
-        </ul>
-      </div>
-
-      <div class="dashboard-card">
-        <h3>📊 Meeting Statistics</h3>
-        <p><strong>24</strong> Meetings This Month</p>
-        <p><strong>18 hrs</strong> Total Meeting Time</p>
-        <p><strong>12</strong> Recordings</p>
-      </div>
-
-      <div class="dashboard-card">
-        <h3>👥 Contacts</h3>
-        <ul>
-          <li>John Doe</li>
-          <li>Sarah Lee</li>
-          <li>DevOps Team</li>
-        </ul>
-      </div>
-
-    </section>
-
-  </div>
-</main>
-
-<!-- 🟣 NEW MEETING MODAL -->
-<div id="meetingModal" class="modal">
-    <div class="modal-content">
-
-        <div class="modal-header">
-            <h3>🎥 Start New Meeting</h3>
-            <span class="close-btn" onclick="closeModal()">✖</span>
-        </div>
-
-        <form method="post" class="modal-form">
-            <input type="hidden" name="action" value="create_meeting">
-
-            <!-- Meeting Title -->
-            <div class="form-group">
-                <label>Meeting Title</label>
-                <input type="text" name="meeting_title" placeholder="e.g. Team Sync" required>
+    <main class="page-content">
+        <section class="home-panel" aria-labelledby="home-title">
+            <div class="hero-copy">
+                <p class="eyebrow">SnQ video care</p>
+                <h1 id="home-title">Meet securely, without the clutter.</h1>
+                <p class="hero-description">Start a private consultation or join one using the code your provider shared with you.</p>
             </div>
 
-            <!-- Meeting ID -->
-            <div class="form-group">
-                <label>Meeting ID</label>
-                <div class="input-with-btn">
-                    <input type="text" name="meeting_id" id="generatedId" readonly>
-                    <button type="button" class="copy-btn" onclick="copyMeetingId()">Copy</button>
+            <div class="quick-actions" aria-label="Consultation actions">
+                <button type="button" class="action-card new-meeting" onclick="openModal()">
+                    <span class="action-icon"><i class="fas fa-video"></i></span>
+                    <span class="action-copy"><strong>Start consultation</strong><small>Create a secure session now</small></span>
+                    <i class="fas fa-arrow-right action-arrow" aria-hidden="true"></i>
+                </button>
+                <button type="button" class="action-card join-meeting" onclick="openJoinModal()">
+                    <span class="action-icon"><i class="fas fa-key"></i></span>
+                    <span class="action-copy"><strong>Join with code</strong><small>Enter a session code to continue</small></span>
+                    <i class="fas fa-arrow-right action-arrow" aria-hidden="true"></i>
+                </button>
+            </div>
+
+            <section class="appointment-card" aria-labelledby="appointment-title">
+                <div class="appointment-heading">
+                    <div>
+                        <p class="eyebrow">Upcoming appointment</p>
+                        <h2 id="appointment-title">Your next appointment</h2>
+                    </div>
+                    <span class="appointment-status"><i class="fas fa-calendar-check"></i> Today</span>
                 </div>
+
+                <div class="appointment-details">
+                    <div class="appointment-time" aria-label="Today at 4 PM">
+                        <span class="appointment-day">Today</span>
+                        <strong>4:00 PM</strong>
+                    </div>
+                    <div class="appointment-info">
+                        <p class="appointment-type">Psychology consultation</p>
+                        <p class="appointment-provider"><i class="fas fa-user-doctor"></i> Dr. Anjali Rao</p>
+                    </div>
+                    <button type="button" class="primary-btn appointment-join" onclick="openJoinModal()">Join session <i class="fas fa-arrow-right"></i></button>
+                </div>
+            </section>
+            <p id="help" class="privacy-note"><i class="fas fa-shield-halved"></i> Your consultations are private and protected.</p>
+        </section>
+    </main>
+
+    <div id="meetingModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="create-title">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div><p class="eyebrow">New session</p><h2 id="create-title">Start a consultation</h2></div>
+                <button type="button" class="close-btn" onclick="closeModal()" aria-label="Close"><i class="fas fa-xmark"></i></button>
             </div>
-
-            <!-- Actions -->
-            <div class="modal-actions">
-                <button type="button" class="cancel-btn" onclick="closeModal()">Cancel</button>
-                <button type="submit" class="primary-btn">Start Meeting</button>
-            </div>
-        </form>
-
-    </div>
-</div>
-
-
-<!-- 🟢 JOIN MEETING MODAL -->
-<div id="joinMeetingModal" class="modal">
-    <div class="modal-content">
-
-        <div class="modal-header">
-            <h3>🔑 Join SnQ Meeting</h3>
-            <span class="close-btn" onclick="closeJoinModal()">✖</span>
+            <form method="post" class="modal-form">
+                <input type="hidden" name="action" value="create_meeting">
+                <div class="form-group">
+                    <label for="meeting-title">Session topic <span>(optional)</span></label>
+                    <input id="meeting-title" type="text" name="meeting_title" placeholder="e.g. Follow-up consultation">
+                </div>
+                <div class="form-group">
+                    <label for="generatedId">Session ID</label>
+                    <div class="input-with-btn">
+                        <input type="text" name="meeting_id" id="generatedId" readonly>
+                        <button type="button" class="copy-btn" onclick="copyMeetingId()">Copy</button>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="cancel-btn" onclick="closeModal()">Cancel</button>
+                    <button type="submit" class="primary-btn">Start session</button>
+                </div>
+            </form>
         </div>
-
-        <form method="post" class="modal-form">
-            <input type="hidden" name="action" value="join_meeting">
-
-            <div class="form-group">
-                <label>Meeting Name (Optional)</label>
-                <input
-                    type="text"
-                    name="meeting_name"
-                    placeholder="e.g. John Doe">
-            </div>
-
-            <div class="form-group">
-                <label>Meeting ID</label>
-                <input
-                    type="text"
-                    name="meeting_id"
-                    placeholder="Enter Meeting ID"
-                    required>
-            </div>
-
-            <div class="modal-actions">
-                <button
-                    type="button"
-                    class="cancel-btn"
-                    onclick="closeJoinModal()">
-                    Cancel
-                </button>
-
-                <button
-                    type="submit"
-                    class="primary-btn">
-                    Join Meeting
-                </button>
-            </div>
-
-        </form>
-
     </div>
-</div>
 
+    <div id="joinMeetingModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="join-title">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div><p class="eyebrow">Secure access</p><h2 id="join-title">Join a consultation</h2></div>
+                <button type="button" class="close-btn" onclick="closeJoinModal()" aria-label="Close"><i class="fas fa-xmark"></i></button>
+            </div>
+            <form method="post" class="modal-form">
+                <input type="hidden" name="action" value="join_meeting">
+                <div class="form-group">
+                    <label for="meeting-name">Your name <span>(optional)</span></label>
+                    <input id="meeting-name" type="text" name="meeting_name" placeholder="e.g. John Doe">
+                </div>
+                <div class="form-group">
+                    <label for="meeting-id">Session code</label>
+                    <input id="meeting-id" type="text" name="meeting_id" placeholder="Enter the code your provider shared" required>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="cancel-btn" onclick="closeJoinModal()">Cancel</button>
+                    <button type="submit" class="primary-btn">Join session</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
-<script>
-function generateMeetingId() {
-    return 'snq-' + Math.random().toString(36).substring(2, 10);
-}
-
-function openModal() {
-    const modal = document.getElementById("meetingModal");
-    modal.style.display = "flex";
-
-    const idField = document.getElementById("generatedId");
-    idField.value = generateMeetingId();
-}
-
-function closeModal() {
-    document.getElementById("meetingModal").style.display = "none";
-}
-
-function copyMeetingId() {
-    const input = document.getElementById("generatedId");
-    input.select();
-    document.execCommand("copy");
-}
-
-function openJoinModal() {
-    document.getElementById("joinMeetingModal").style.display = "flex";
-}
-
-function closeJoinModal() {
-    document.getElementById("joinMeetingModal").style.display = "none";
-}
-window.onclick = function(event) {
-
-    if (event.target == document.getElementById("meetingModal")) {
-        closeModal();
-    }
-
-    if (event.target == document.getElementById("joinMeetingModal")) {
-        closeJoinModal();
-    }
-}
-</script>
-
+    <script>
+        function generateMeetingId() { return 'snq-' + Math.random().toString(36).substring(2, 10); }
+        function openModal() { document.getElementById('meetingModal').style.display = 'flex'; document.getElementById('generatedId').value = generateMeetingId(); }
+        function closeModal() { document.getElementById('meetingModal').style.display = 'none'; }
+        function copyMeetingId() { navigator.clipboard.writeText(document.getElementById('generatedId').value); }
+        function openJoinModal() { document.getElementById('joinMeetingModal').style.display = 'flex'; }
+        function closeJoinModal() { document.getElementById('joinMeetingModal').style.display = 'none'; }
+        window.addEventListener('click', (event) => {
+            if (event.target === document.getElementById('meetingModal')) closeModal();
+            if (event.target === document.getElementById('joinMeetingModal')) closeJoinModal();
+        });
+    </script>
 </body>
 </html>
