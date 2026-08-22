@@ -1,13 +1,11 @@
-from werkzeug.security import generate_password_hash
 from .supabase_client import supabase
 
 
 def check_user(email, username):
-
     existing_user = (
         supabase
         .table("users")
-        .select("id")
+        .select("id, email, username")
         .or_(f"email.eq.{email},username.eq.{username}")
         .execute()
     )
@@ -17,6 +15,7 @@ def check_user(email, username):
 
     return None
 
+
 def create_user_record(
     first_name,
     last_name,
@@ -24,31 +23,48 @@ def create_user_record(
     username,
     password
 ):
+    try:
+        email = email.strip().lower()
+        username = username.strip()
 
-    # Check if user already exists
-    existing_user = check_user(email, username)
+        # Check if profile already exists
+        existing_user = check_user(email, username)
 
-    if existing_user:
+        if existing_user:
+            return None
+
+        auth_response = supabase.auth.sign_up({
+            "email": email,
+            "password": password
+        })
+
+        if not auth_response.user:
+            return None
+
+        auth_user_id = auth_response.user.id
+
+
+        response = (
+            supabase
+            .table("users")
+            .insert({
+                "id": auth_user_id,
+                "first_name": first_name,
+                "last_name": last_name,
+                "email": email,
+                "username": username
+            })
+            .execute()
+        )
+
+        if response.data:
+            return response.data[0]["id"]
+
+        # If profile creation failed, return None.
+        # Auth user may need cleanup through an admin/service-role
+        # operation if you want complete rollback behavior.
         return None
 
-    # Hash password
-    password_hash = generate_password_hash(password)
-
-    # Insert into Supabase
-    response = (
-        supabase
-        .table("users")
-        .insert({
-            "first_name": first_name,
-            "last_name": last_name,
-            "email": email,
-            "username": username,
-            "password_hash": password_hash
-        })
-        .execute()
-    )
-
-    if response.data:
-        return response.data[0]["id"]
-
-    return None
+    except Exception as e:
+        print(f"Error creating user: {e}")
+        return None
