@@ -4,9 +4,9 @@ import os
 import uuid
 import jwt
 import time
-
 from config import JWT_SECRET, JWT_ALGO, JWT_EXP_SECONDS, FLASK_SECRET_KEY, ICE_SERVERS
 import ws_server
+from database import create_record,authenticate_user
 
 app = Flask(__name__)
 
@@ -14,12 +14,7 @@ app.secret_key = FLASK_SECRET_KEY
 
 
 def normalize_meeting_id(raw_id):
-    """Canonicalize a meeting id so the same meeting always maps to the
-    same WebSocket room key, regardless of stray whitespace or casing
-    differences introduced by manual entry, copy/paste, or mobile
-    autocapitalize (e.g. "Abc-Def-123 " vs "abc-def-123" would otherwise
-    be treated as two different rooms and participants would never see
-    each other)."""
+
     if not raw_id:
         return None
     normalized = raw_id.strip().lower()
@@ -42,12 +37,9 @@ def login():
         username = request.form.get("username")
         password = request.form.get("password")
 
-        # Replace with database authentication later
-        if username == "admin" and password == "password":
+        user = authenticate_user.authenticate_user(username, password)
+        if user:
             session["user"] = username
-            return redirect(url_for("home"))
-        elif username == "testadmin" and password != "password":
-            session["user"] = "testadmin"
             return redirect(url_for("home"))
         else:
             return "Invalid credentials", 401
@@ -72,7 +64,13 @@ def create_account():
         if len(password)<8:
             return "Password must be at least 8 characters.", 400
         else:
+            user_id = create_record.create_user_record(first_name,last_name,email,username,confirm_password)
+            if not user_id:
+                return "User already exists or account creation failed.", 400
+
             session["user"] = username
+            session["user_id"] = user_id
+
             return redirect(url_for("home"))
 
     return render_template("create_account.html")
