@@ -6,7 +6,7 @@ import jwt
 import time
 from config import JWT_SECRET, JWT_ALGO, JWT_EXP_SECONDS, FLASK_SECRET_KEY, ICE_SERVERS
 import ws_server
-from database import create_record,authenticate_user
+from database import create_record, authenticate_user, create_guest
 from database.supabase_client import supabase
 
 app = Flask(__name__)
@@ -210,6 +210,79 @@ def generate_meeting_id():
     })
 
 
+@app.route("/guest_register/<room_id>", methods=["GET", "POST"])
+def guest_register(room_id):
+    """Allow guests to register before joining a meeting."""
+
+    normalized_room_id = normalize_meeting_id(room_id)
+    if not normalized_room_id:
+        return redirect(url_for("home"))
+
+    if normalized_room_id != room_id:
+        return redirect(url_for("guest_register", room_id=normalized_room_id))
+
+    room_id = normalized_room_id
+
+    # If user is already logged in, redirect directly to meeting
+    if "user" in session:
+        return redirect(url_for("meeting_room", room_id=room_id))
+
+    # If guest already registered for this session, redirect to meeting
+    if "guest_id" in session and "guest_name" in session:
+        return redirect(url_for("meeting_room", room_id=room_id))
+
+    if request.method == "POST":
+        guest_name = request.form.get("guest_name", "").strip()
+        guest_email = request.form.get("guest_email", "").strip()
+
+        print(f"\n🔵 Guest registration attempt:")
+        print(f"   Name: {guest_name}")
+        print(f"   Email: {guest_email if guest_email else '(none)'}")
+        print(f"   Room: {room_id}")
+
+        if not guest_name:
+            print("❌ Name validation failed - name is empty")
+            return render_template(
+                "guest_register.html",
+                room_id=room_id,
+                meeting_title=session.get("meeting_title", "SnQ Meeting"),
+                error="Guest name is required."
+            ), 400
+
+        # Create guest record in database
+        print("📤 Calling create_guest_record...")
+        guest_id = create_guest.create_guest_record(guest_name, guest_email if guest_email else None)
+
+        print(f"📥 create_guest_record returned: {guest_id}")
+
+        if not guest_id:
+            print("❌ Guest registration failed - no guest_id returned")
+            error_msg = (
+                "Failed to register as guest. Please try again. "
+                "Check the terminal for error details."
+            )
+            return render_template(
+                "guest_register.html",
+                room_id=room_id,
+                meeting_title=session.get("meeting_title", "SnQ Meeting"),
+                error=error_msg
+            ), 500
+
+        # Store guest info in session
+        session["guest_id"] = guest_id
+        session["guest_name"] = guest_name
+        session["guest_email"] = guest_email if guest_email else None
+
+        print(f"✅ Guest session created: {guest_name} ({guest_id})")
+        return redirect(url_for("meeting_room", room_id=room_id))
+
+    return render_template(
+        "guest_register.html",
+        room_id=room_id,
+        meeting_title=session.get("meeting_title", "SnQ Meeting")
+    )
+
+
 @app.route("/meeting/<room_id>")
 def meeting_room(room_id):
 
@@ -221,13 +294,28 @@ def meeting_room(room_id):
         return redirect(url_for("meeting_room", room_id=normalized_room_id))
 
     room_id = normalized_room_id
-    username = session.get("user", "Guest")
+
+    # Check if user is authenticated (logged in) or registered as guest
+    username = session.get("user")
+    guest_id = session.get("guest_id")
+    guest_name = session.get("guest_name")
+
+    # If neither logged in nor registered as guest, redirect to guest registration
+    if not username and not (guest_id and guest_name):
+        return redirect(url_for("guest_register", room_id=room_id))
+
+    # Use logged-in username or guest name
+    if username:
+        display_name = username
+    else:
+        display_name = guest_name
+
     meeting_title = session.get("meeting_title", "SnQ Meeting")
     connection_id = uuid.uuid4().hex
 
     token = jwt.encode(
         {
-            "user": username,
+            "user": display_name,
             "room": room_id,
             "cid": connection_id,
             "exp": int(time.time()) + JWT_EXP_SECONDS
@@ -240,7 +328,7 @@ def meeting_room(room_id):
         "room.html",
         room_id=room_id,
         meeting_title=meeting_title,
-        username=username,
+        username=display_name,
         token=token,
         connection_id=connection_id,
         ice_servers_json=json.dumps(ICE_SERVERS)

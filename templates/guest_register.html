@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Join Meeting as Guest - SnQ</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='login_style.css') }}">
+    <style>
+        /* Override container for guest registration */
+        .login-container {
+            width: 380px;
+        }
+
+        /* Logo circle styling */
+        .logo-circle {
+            margin-bottom: 20px;
+        }
+
+        /* Meeting info section */
+        .meeting-info {
+            background: rgba(0, 255, 255, 0.05);
+            border: 1px solid rgba(34, 211, 238, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .meeting-info p {
+            margin: 8px 0;
+            font-size: 13px;
+            color: #e2e8f0;
+            opacity: 0.9;
+        }
+
+        .meeting-info strong {
+            color: #22d3ee;
+        }
+
+        /* Error message styling */
+        .error-message {
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.4);
+            color: #fca5a5;
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            font-size: 13px;
+            margin-top: 10px;
+        }
+
+        /* Form group styling */
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 13px;
+            color: #cbd5e1;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-group input[type="text"],
+        .form-group input[type="email"] {
+            width: 100%;
+            padding: 12px;
+            margin: 0;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(2, 6, 23, 0.6);
+            color: #e2e8f0;
+            outline: none;
+            transition: 0.3s;
+            font-size: 14px;
+        }
+
+        .form-group input::placeholder {
+            color: #64748b;
+        }
+
+        .form-group input:focus {
+            border: 1px solid #22d3ee;
+            box-shadow: 0 0 10px rgba(34, 211, 238, 0.4);
+        }
+
+        /* Submit button - matches login button */
+        .submit-btn {
+            width: 100%;
+            padding: 12px;
+            margin-top: 20px;
+            border-radius: 10px;
+            border: none;
+            background: linear-gradient(135deg, #06b6d4, #3b82f6);
+            color: white;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.6);
+        }
+
+        /* Divider */
+        .or-divider {
+            text-align: center;
+            margin: 20px 0;
+            font-size: 13px;
+            color: #64748b;
+            position: relative;
+        }
+
+        .or-divider::before,
+        .or-divider::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            width: 45%;
+            height: 1px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .or-divider::before {
+            left: 0;
+        }
+
+        .or-divider::after {
+            right: 0;
+        }
+
+        /* Links section */
+        .guest-links {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .guest-links a {
+            display: block;
+            margin-top: 10px;
+            font-size: 13px;
+            color: #38bdf8;
+            text-decoration: none;
+            opacity: 0.85;
+            transition: 0.3s;
+        }
+
+        .guest-links a:hover {
+            opacity: 1;
+            color: #22d3ee;
+        }
+
+        .guest-links .signin-link {
+            padding: 8px 0;
+            border-radius: 8px;
+            transition: 0.3s;
+        }
+
+        .guest-links .signin-link:hover {
+            background: rgba(56, 189, 248, 0.1);
+        }
+
+        .required {
+            color: #ff6b6b;
+        }
+
+        /* Title styling */
+        h2 {
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            font-size: 13px;
+            margin-bottom: 18px;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <!-- Wave background (matches login page) -->
+    <div class="wave-bg">
+        <span></span>
+        <span></span>
+        <span></span>
+    </div>
+
+    <div class="login-container">
+        <!-- Circular Icon -->
+        <div class="logo-circle">
+            <svg class="sync-icon" viewBox="0 0 24 24" fill="none">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"
+                      stroke="none"
+                      fill="#22d3ee" />
+            </svg>
+        </div>
+
+        <h2>Join Meeting as Guest</h2>
+        <p class="subtitle">Share your details to join</p>
+
+        <!-- Meeting Info -->
+        <div class="meeting-info">
+            <p><strong>Meeting ID:</strong><br>{{ room_id }}</p>
+            {% if meeting_title %}
+                <p style="margin-top: 10px;"><strong>Meeting:</strong><br>{{ meeting_title }}</p>
+            {% endif %}
+        </div>
+
+        <!-- Error Message -->
+        {% if error %}
+            <p class="error-message">{{ error }}</p>
+        {% endif %}
+
+        <!-- Registration Form -->
+        <form method="POST">
+            <div class="form-group">
+                <label for="guest_name">Your Name <span class="required">*</span></label>
+                <input
+                    type="text"
+                    id="guest_name"
+                    name="guest_name"
+                    placeholder="Full name"
+                    required
+                    autofocus
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="guest_email">Email Address</label>
+                <input
+                    type="email"
+                    id="guest_email"
+                    name="guest_email"
+                    placeholder="your@email.com"
+                >
+            </div>
+
+            <button type="submit" class="submit-btn">Join Meeting</button>
+        </form>
+
+        <div class="or-divider">or</div>
+
+        <!-- Links Section -->
+        <div class="guest-links">
+            <a href="{{ url_for('login') }}" class="signin-link">Sign in with an account</a>
+            <a href="{{ url_for('home') }}">← Back</a>
+        </div>
+    </div>
+</body>
+</html>
+
+
