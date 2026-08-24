@@ -3,7 +3,7 @@ Database initialization script to create required tables in Supabase.
 Run this once to set up the database schema.
 """
 
-from supabase_client import supabase
+from .supabase_client import get_supabase
 
 def init_guests_table():
     """
@@ -26,6 +26,7 @@ def init_guests_table():
 
         # Use Supabase's RPC or direct SQL execution
         # Note: This requires service role key, not anon key
+        supabase = get_supabase()
         response = supabase.query(sql_query)
         print("✓ Guests table created successfully")
         return True
@@ -56,6 +57,7 @@ def init_rls_policies():
     """
     try:
         # Enable RLS
+        supabase = get_supabase()
         supabase.query("ALTER TABLE guests ENABLE ROW LEVEL SECURITY;")
 
         # Allow public insert
@@ -90,6 +92,7 @@ def verify_guests_table():
     Verify that the guests table exists and is accessible.
     """
     try:
+        supabase = get_supabase()
         response = supabase.table("guests").select("*").limit(0).execute()
         print("✓ Guests table is accessible and working")
         return True
@@ -122,4 +125,3 @@ if __name__ == "__main__":
         print("⚠ Some setup steps need manual configuration.")
         print("See SUPABASE_SETUP.md for manual SQL commands.")
     print("=" * 50)
-

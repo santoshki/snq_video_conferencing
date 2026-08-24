@@ -1,7 +1,8 @@
-from .supabase_client import supabase
+from .supabase_client import get_supabase
 
 
 def check_user(email, username):
+    supabase = get_supabase()
     existing_user = (
         supabase
         .table("users")
@@ -33,6 +34,7 @@ def create_user_record(
         if existing_user:
             return None
 
+        supabase = get_supabase()
         auth_response = supabase.auth.sign_up({
             "email": email,
             "password": password

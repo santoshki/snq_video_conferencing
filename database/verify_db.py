@@ -3,7 +3,7 @@ Manual setup script for Supabase guests table.
 This provides instructions and verification for database setup.
 """
 
-from supabase_client import supabase
+from .supabase_client import get_supabase
 
 def manual_setup_instructions():
     """Print instructions for manual table creation in Supabase."""
@@ -60,6 +60,7 @@ def verify_table_exists():
     """Verify the guests table exists and is accessible."""
     try:
         # Try to query the guests table
+        supabase = get_supabase()
         response = supabase.table("guests").select("count").limit(1).execute()
         print("✓ SUCCESS: Guests table exists and is accessible!")
         print(f"  Response: {response}")

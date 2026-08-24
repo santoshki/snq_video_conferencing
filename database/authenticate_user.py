@@ -1,4 +1,4 @@
-from .supabase_client import supabase
+from .supabase_client import get_supabase
 
 
 def authenticate_user(username, password):
@@ -6,6 +6,7 @@ def authenticate_user(username, password):
         username = username.strip()
 
         # Find the user's email from your profile table
+        supabase = get_supabase()
         response = (
             supabase
             .table("users")

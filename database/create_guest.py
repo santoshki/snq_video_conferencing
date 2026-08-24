@@ -1,4 +1,4 @@
-from .supabase_client import supabase
+from .supabase_client import get_supabase
 import uuid
 
 
@@ -26,6 +26,7 @@ def create_guest_record(guest_name, guest_email=None):
         }
         print(f"   Data to insert: {insert_data}")
 
+        supabase = get_supabase()
         response = (
             supabase
             .table("guests")
@@ -75,6 +76,7 @@ def get_guest(guest_id):
     Retrieve a guest record by ID.
     """
     try:
+        supabase = get_supabase()
         response = (
             supabase
             .table("guests")
@@ -90,4 +92,3 @@ def get_guest(guest_id):
     except Exception as e:
         print(f"Error retrieving guest: {e}")
         return None
-
