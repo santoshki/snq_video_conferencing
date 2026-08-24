@@ -7,7 +7,7 @@ import time
 from config import JWT_SECRET, JWT_ALGO, JWT_EXP_SECONDS, FLASK_SECRET_KEY, ICE_SERVERS
 import ws_server
 from database import create_record, authenticate_user, create_guest
-from database.supabase_client import supabase
+from database.supabase_client import get_supabase
 
 app = Flask(__name__)
 app.secret_key = FLASK_SECRET_KEY
@@ -80,7 +80,7 @@ def forgot_password():
             )
 
             print("Password reset redirect URL:", redirect_url)
-            response = supabase.auth.reset_password_email(
+            response = get_supabase().auth.reset_password_email(
                 email,
                 {
                     "redirect_to": redirect_url
@@ -116,11 +116,11 @@ def reset_password():
         return "Invalid or expired password reset link.", 400
 
     try:
-        supabase.auth.set_session(
+        get_supabase().auth.set_session(
             access_token,
             refresh_token
         )
-        response = supabase.auth.update_user({
+        response = get_supabase().auth.update_user({
             "password": password
         })
         if response.user:
