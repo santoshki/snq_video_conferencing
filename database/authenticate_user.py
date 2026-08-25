@@ -1,17 +1,27 @@
 from .supabase_client import get_supabase
 
 
-def authenticate_user(username, password):
-    try:
-        username = username.strip()
+def authenticate_user(credential, password):
+    """
+    Authenticate user via username or email.
 
-        # Find the user's email from your profile table
+    Args:
+        credential: Username or email address
+        password: User password
+
+    Returns:
+        User object if authentication succeeds, None otherwise
+    """
+    try:
+        credential = credential.strip().lower()
+
+        # Find the user by username or email
         supabase = get_supabase()
         response = (
             supabase
             .table("users")
             .select("id, first_name, last_name, email, username")
-            .eq("username", username)
+            .or_(f"username.eq.{credential},email.eq.{credential}")
             .execute()
         )
 
