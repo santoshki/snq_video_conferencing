@@ -191,9 +191,14 @@ function getOrCreatePeer(cid, user) {
      }
      return sender;
    }) : [];
+   // Keep a video sender available even when this participant's camera is
+   // off. Without a video transceiver, a peer that joined while the camera
+   // was disabled has no sender for a future screen-share track to replace.
+   let videoSender = senders.find(sender => sender.track && sender.track.kind === "video") || null;
+   if (!videoSender) videoSender = pc.addTransceiver("video", { direction: "sendrecv" }).sender;
    const tile = createTile(cid, user);
    const row = addParticipantRow(cid, user);
-   entry = { pc, user, tile, row, videoEnabled: true, videoSender: senders.find(sender => sender.track && sender.track.kind === "video") || null, pendingCandidates: pendingIceByPeer.get(cid) || [] };
+   entry = { pc, user, tile, row, videoEnabled: true, videoSender, pendingCandidates: pendingIceByPeer.get(cid) || [] };
    pendingIceByPeer.delete(cid);
    peers.set(cid, entry);
   pc.ontrack = event => {
