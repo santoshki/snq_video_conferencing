@@ -173,15 +173,29 @@ function addParticipantRow(cid, user) {
   return row;
 }
 function getOrCreatePeer(cid, user) {
-  let entry = peers.get(cid);
-  if (entry) return entry;
-  const pc = new RTCPeerConnection(rtcConfig);
-  const senders = localStream ? localStream.getTracks().map(track => pc.addTrack(track, localStream)) : [];
-  const tile = createTile(cid, user);
-  const row = addParticipantRow(cid, user);
-  entry = { pc, user, tile, row, videoEnabled: true, videoSender: senders.find(sender => sender.track && sender.track.kind === "video") || null, pendingCandidates: pendingIceByPeer.get(cid) || [] };
-  pendingIceByPeer.delete(cid);
-  peers.set(cid, entry);
+   let entry = peers.get(cid);
+   if (entry) return entry;
+   const pc = new RTCPeerConnection(rtcConfig);
+   const senders = localStream ? localStream.getTracks().map(track => {
+     const sender = pc.addTrack(track, localStream);
+     // Set video encoding parameters for Ultra HD quality
+     if (track.kind === "video") {
+       const parameters = sender.getParameters();
+       if (!parameters.encodings) parameters.encodings = [{}];
+       parameters.encodings[0] = {
+         maxBitrate: 5000000, // 5 Mbps for ultra HD
+         maxFramerate: 60,
+         scaleResolutionDownBy: 1.0
+       };
+       sender.setParameters(parameters).catch(e => console.debug("Video encoding params not fully supported", e));
+     }
+     return sender;
+   }) : [];
+   const tile = createTile(cid, user);
+   const row = addParticipantRow(cid, user);
+   entry = { pc, user, tile, row, videoEnabled: true, videoSender: senders.find(sender => sender.track && sender.track.kind === "video") || null, pendingCandidates: pendingIceByPeer.get(cid) || [] };
+   pendingIceByPeer.delete(cid);
+   peers.set(cid, entry);
   pc.ontrack = event => {
     const videoEl = tile.querySelector("video");
     let remoteStream = event.streams && event.streams[0];
@@ -259,7 +273,7 @@ function toggleAudio() { if (!localStream) return; const track = localStream.get
 function getVideoSender(entry) { if (entry.videoSender) return entry.videoSender; entry.videoSender = entry.pc.getSenders().find(sender => sender.track && sender.track.kind === "video") || null; return entry.videoSender; }
 async function replaceOutgoingVideoTrack(track) { await Promise.all([...peers.values()].map(entry => { const sender = getVideoSender(entry); return sender ? sender.replaceTrack(track) : Promise.resolve(); })); }
 function syncVideoUI() { $("disableVideoBtn").classList.toggle("off", !isVideoEnabled); $("localVideoIcon").textContent = isVideoEnabled ? "▣" : "▧"; $("localAvatar").classList.toggle("hidden", isVideoEnabled); $("localVideo").classList.toggle("hidden", !isVideoEnabled && !isScreenSharing); sendSignal("video-toggle", { enabled: isVideoEnabled }); }
-async function toggleVideo() { if (isVideoEnabled) { if (!isScreenSharing) await replaceOutgoingVideoTrack(null); if (cameraTrack) { if (localStream) localStream.removeTrack(cameraTrack); cameraTrack.stop(); cameraTrack = null; } isVideoEnabled = false; syncVideoUI(); return; } try { const cameraStream = await navigator.mediaDevices.getUserMedia({ video: true }); const newTrack = cameraStream.getVideoTracks()[0]; if (!newTrack) throw new Error("No camera track available"); if (!localStream) localStream = new MediaStream(); localStream.getVideoTracks().forEach(track => localStream.removeTrack(track)); localStream.addTrack(newTrack); cameraTrack = newTrack; isVideoEnabled = true; if (!isScreenSharing) { await replaceOutgoingVideoTrack(newTrack); $("localVideo").srcObject = localStream; } syncVideoUI(); } catch (err) { console.error(err); showToast("Camera could not be turned on."); } }
+async function toggleVideo() { if (isVideoEnabled) { if (!isScreenSharing) await replaceOutgoingVideoTrack(null); if (cameraTrack) { if (localStream) localStream.removeTrack(cameraTrack); cameraTrack.stop(); cameraTrack = null; } isVideoEnabled = false; syncVideoUI(); return; } try { const cameraStream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 3840 }, height: { ideal: 2160 }, frameRate: { ideal: 60 } }, audio: false }); const newTrack = cameraStream.getVideoTracks()[0]; if (!newTrack) throw new Error("No camera track available"); if (!localStream) localStream = new MediaStream(); localStream.getVideoTracks().forEach(track => localStream.removeTrack(track)); localStream.addTrack(newTrack); cameraTrack = newTrack; isVideoEnabled = true; if (!isScreenSharing) { await replaceOutgoingVideoTrack(newTrack); $("localVideo").srcObject = localStream; } syncVideoUI(); } catch (err) { console.error(err); showToast("Camera could not be turned on."); } }
 async function toggleScreenShare() { if (!isScreenSharing) { try { const display = await navigator.mediaDevices.getDisplayMedia({ video: true }); const screenTrack = display.getVideoTracks()[0]; await replaceOutgoingVideoTrack(screenTrack); $("localVideo").srcObject = display; isScreenSharing = true; $("screenShareBtn").classList.add("active"); screenTrack.onended = stopScreenShare; } catch (e) { console.error(e); } } else stopScreenShare(); }
 async function stopScreenShare() { await replaceOutgoingVideoTrack(isVideoEnabled ? cameraTrack : null); if (localStream && isVideoEnabled) $("localVideo").srcObject = localStream; isScreenSharing = false; $("screenShareBtn").classList.remove("active"); syncVideoUI(); }
 function sendChatMessage() { const input = $("chatInput"), message = input.value.trim(); if (!message) return; sendSignal("chat", { message }); addChatMessage("Me", message); input.value = ""; }
@@ -277,7 +291,7 @@ function setCaptionButtonsActive(active) { [$("captionBtn"), $("captionDockBtn")
 function toggleCaptions() { if (recognition) { const activeRecognition = recognition; recognition = null; activeRecognition.stop(); clearTimeout(captionHideTimer); $("captions").classList.add("hidden"); setCaptionButtonsActive(false); return; } const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition; if (!SpeechRecognition) { showToast("Live subtitles are not supported by this browser."); return; } recognition = new SpeechRecognition(); recognition.lang = navigator.language || "en-US"; recognition.continuous = true; recognition.interimResults = true; recognition.onresult = event => { let text = "", isFinal = true; for (let i = event.resultIndex; i < event.results.length; i++) { text += event.results[i][0].transcript; if (!event.results[i].isFinal) isFinal = false; } sendCaption(text, isFinal); }; recognition.onerror = event => { if (event.error !== "no-speech") console.debug("Caption recognition error", event.error); }; recognition.onend = () => { if (recognition) recognition.start(); }; recognition.start(); setCaptionButtonsActive(true); }
 function copyInvite() { const link = location.origin + "/meeting/" + encodeURIComponent(ROOM_ID); navigator.clipboard?.writeText(link).catch(() => { const input = document.createElement("textarea"); input.value = link; document.body.append(input); input.select(); document.execCommand("copy"); input.remove(); }); showToast("Meeting link copied"); }
 function exitMeeting() { clearInterval(meetingTimerInterval); sendSignal("leave"); peers.forEach(entry => { try { entry.pc.close(); } catch (e) {} }); peers.clear(); if (localStream) localStream.getTracks().forEach(track => track.stop()); audioContexts.forEach(context => context.close()); if (ws) ws.close(); location.href = "/home"; }
-async function initMedia() { try { localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true }); cameraTrack = localStream.getVideoTracks()[0] || null; $("localVideo").srcObject = localStream; $("localInitials").textContent = getInitials(USERNAME); watchSpeaking(localStream, $("localCard"), "local"); } catch (err) { console.error(err); showToast("Camera or microphone permission was not granted."); $("localAvatar").classList.remove("hidden"); } }
+async function initMedia() { try { localStream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 3840 }, height: { ideal: 2160 }, frameRate: { ideal: 60 } }, audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }); cameraTrack = localStream.getVideoTracks()[0] || null; if (cameraTrack) { const settings = cameraTrack.getSettings(); console.log("Video track settings:", { width: settings.width, height: settings.height, frameRate: settings.frameRate }); } $("localVideo").srcObject = localStream; $("localInitials").textContent = getInitials(USERNAME); watchSpeaking(localStream, $("localCard"), "local"); } catch (err) { console.error(err); showToast("Camera or microphone permission was not granted."); $("localAvatar").classList.remove("hidden"); } }
 $("sendBtn").onclick = sendChatMessage; $("chatInput").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); sendChatMessage(); } }); $("chatToggleBtn").onclick = () => $("chatPanel").classList.add("open"); $("railChatBtn").onclick = () => $("chatPanel").classList.add("open"); $("closeChatBtn").onclick = () => $("chatPanel").classList.remove("open"); $("participantsToggle").onclick = () => $("participantsPanel").classList.toggle("compact-open"); $("closeParticipantsBtn").onclick = () => $("participantsPanel").classList.remove("compact-open"); $("copyRoomBtn").onclick = copyInvite; $("copyRoomBtnSide").onclick = copyInvite; $("copyRoomBtnRail").onclick = copyInvite; $("raiseHandBtn").onclick = toggleHand; $("recordBtn").onclick = toggleRecording; $("captionBtn").onclick = toggleCaptions; $("captionDockBtn").onclick = toggleCaptions; document.querySelectorAll("[data-reaction]").forEach(b => b.onclick = () => sendReaction(b.dataset.reaction)); $("effectsBtn").onclick = () => $("effectsMenu").classList.toggle("hidden"); document.querySelectorAll("[data-filter]").forEach(b => b.onclick = () => setFilter(b.dataset.filter));
 $("reactionToggle").onclick = () => $("reactionBar").classList.toggle("hidden");
 $("muteAudioBtn").addEventListener("click", () => setTimeout(syncLocalMuteUI, 0));

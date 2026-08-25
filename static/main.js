@@ -15,14 +15,27 @@ const messages = document.getElementById("messages");
 document.addEventListener("DOMContentLoaded", () => {
  socket.emit("join", { room: roomId });
 
- // Request access to webcam and microphone
- navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+ // Request access to webcam and microphone with Ultra HD constraints
+ navigator.mediaDevices.getUserMedia({
+  video: {
+   width: { ideal: 3840 },
+   height: { ideal: 2160 },
+   frameRate: { ideal: 60 }
+  },
+  audio: {
+   echoCancellation: true,
+   noiseSuppression: true,
+   autoGainControl: true
+  }
+ })
  .then(stream => {
  // Disable the video track immediately
  const videoTrack = stream.getVideoTracks()[0];
  if (videoTrack) {
  videoTrack.enabled = false;
- console.log("Video track initialized but disabled by default.");
+ const settings = videoTrack.getSettings();
+ console.log("Video track initialized (disabled by default)");
+ console.log("Video capabilities:", { width: settings.width, height: settings.height, frameRate: settings.frameRate });
  }
 
  localVideo.srcObject = stream;
@@ -117,7 +130,18 @@ function toggleVideo() {
  }
 }
 
-navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+navigator.mediaDevices.getUserMedia({
+ video: {
+  width: { ideal: 3840 },
+  height: { ideal: 2160 },
+  frameRate: { ideal: 60 }
+ },
+ audio: {
+  echoCancellation: true,
+  noiseSuppression: true,
+  autoGainControl: true
+ }
+})
  .then(stream => {
  const videoTrack = stream.getVideoTracks()[0];
  if (videoTrack) {
