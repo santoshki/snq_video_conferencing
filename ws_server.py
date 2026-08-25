@@ -128,6 +128,32 @@ def init_app(app):
                 msg["user"] = username
                 msg["cid"] = cid
 
+                # Captions are real-time, room-wide events. Handle them
+                # explicitly so transcription output from a guest reaches
+                # every other participant in the same normalized format.
+                # The browser's speech-recognition service can emit interim
+                # payloads with unexpected values, so discard empty text and
+                # cap the payload before sending it to the room.
+                if msg_type == "caption":
+                    raw_text = msg.get("text")
+                    if not isinstance(raw_text, str):
+                        continue
+                    text = " ".join(raw_text.split())
+                    if not text:
+                        continue
+                    _broadcast(
+                        room_id,
+                        {
+                            "type": "caption",
+                            "user": username,
+                            "cid": cid,
+                            "text": text[:1000],
+                            "final": bool(msg.get("final")),
+                        },
+                        exclude_cid=cid,
+                    )
+                    continue
+
                 # Extract the direct target connection if one is provided
                 target_cid = msg.get("target")
 
