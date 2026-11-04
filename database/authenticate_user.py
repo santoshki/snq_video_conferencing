@@ -13,7 +13,7 @@ def authenticate_user(credential, password):
         User object if authentication succeeds, None otherwise
     """
     try:
-        credential = credential.strip().lower()
+        credential = credential.strip()
 
         # Find the user by username or email
         supabase = get_supabase()
