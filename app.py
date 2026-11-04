@@ -32,7 +32,8 @@ def login():
         password = request.form.get("password")
         user = authenticate_user.authenticate_user(username, password)
         if user:
-            session["user"] = username
+            session["user"] = user["username"]
+            session["user_id"] = user["id"]
             return redirect(url_for("home"))
         else:
             return "Invalid credentials", 401
