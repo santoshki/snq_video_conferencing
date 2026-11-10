@@ -1,34 +1,45 @@
 import os
+from dotenv import load_dotenv
 
-# In production (Render) set these as real environment variables in the
-# service dashboard. The literals below are only a fallback for local dev.
-JWT_SECRET = os.environ.get("JWT_SECRET", "super_shared_secret_change_this")
+# Load a local .env for development. Production should set these through the
+# service manager's EnvironmentFile instead.
+load_dotenv()
+
+APP_ENV = os.environ.get("APP_ENV", "production").strip().lower()
+IS_PRODUCTION = APP_ENV == "production"
+
+
+def _secret(name):
+    value = os.environ.get(name, "")
+    if value:
+        if IS_PRODUCTION and len(value) < 32:
+            raise RuntimeError(f"{name} must contain at least 32 characters in production")
+        return value
+    if IS_PRODUCTION:
+        raise RuntimeError(f"{name} must be set in the production environment")
+    # Development-only values prevent accidental use of known production keys.
+    return f"development-only-{name}-do-not-deploy"
+
+
+JWT_SECRET = _secret("JWT_SECRET")
 JWT_ALGO = "HS256"
 JWT_EXP_SECONDS = 3600  # 1 hour
 
-FLASK_SECRET_KEY = os.environ.get("FLASK_SECRET_KEY", "your_flask_session_secret")
+FLASK_SECRET_KEY = _secret("FLASK_SECRET_KEY")
 
-# STUN alone is not enough once you have 3+ participants doing a full mesh
-# of peer connections behind real-world NATs — some pairs simply won't find
-# a direct route and that peer will silently never appear on screen. A TURN
-# server relays media for those pairs. Openrelay is a free public TURN
-# service that's fine for low-traffic/demo use; swap in your own
-# (Twilio, Cloudflare, metered.ca, self-hosted coturn) before real traffic.
-ICE_SERVERS = [
-    {"urls": "stun:stun.l.google.com:19302"},
-    {
-        "urls": "turn:openrelay.metered.ca:80",
-        "username": "openrelayproject",
-        "credential": "openrelayproject",
-    },
-    {
-        "urls": "turn:openrelay.metered.ca:443",
-        "username": "openrelayproject",
-        "credential": "openrelayproject",
-    },
-    {
-        "urls": "turn:openrelay.metered.ca:443?transport=tcp",
-        "username": "openrelayproject",
-        "credential": "openrelayproject",
-    },
-]
+# Use a private coturn deployment or a managed TURN provider. Public shared
+# relays are not reliable or safe for a consultation service.
+_turn_urls = [url.strip() for url in os.environ.get("TURN_URLS", "").split(",") if url.strip()]
+_turn_username = os.environ.get("TURN_USERNAME", "")
+_turn_credential = os.environ.get("TURN_CREDENTIAL", "")
+
+if IS_PRODUCTION and (not _turn_urls or not _turn_username or not _turn_credential):
+    raise RuntimeError("TURN_URLS, TURN_USERNAME, and TURN_CREDENTIAL must be set in production")
+
+ICE_SERVERS = [{"urls": "stun:stun.l.google.com:19302"}]
+if _turn_urls and _turn_username and _turn_credential:
+    ICE_SERVERS.append({
+        "urls": _turn_urls,
+        "username": _turn_username,
+        "credential": _turn_credential,
+    })

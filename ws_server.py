@@ -81,14 +81,27 @@ def init_app(app):
 
         with rooms_lock:
             room = rooms.setdefault(room_id, {})
-            old_entry = room.get(cid)
-            room[cid] = {"ws": ws, "user": username}
-            others = [
-                {"cid": other_cid, "user": entry["user"]}
-                for other_cid, entry in room.items()
-                if other_cid != cid
-            ]
-            count = len(room)
+            # This beta intentionally supports a single consultation pair per
+            # room. Enforce it server-side instead of trusting the UI.
+            if cid not in room and len(room) >= 2:
+                room_full = True
+            else:
+                room_full = False
+                old_entry = room.get(cid)
+                room[cid] = {"ws": ws, "user": username}
+                others = [
+                    {"cid": other_cid, "user": entry["user"]}
+                    for other_cid, entry in room.items()
+                    if other_cid != cid
+                ]
+                count = len(room)
+
+        if room_full:
+            try:
+                ws.send(json.dumps({"type": "room-full", "message": "This consultation already has two participants."}))
+            finally:
+                ws.close()
+            return
 
         # Same connection id reconnecting (e.g. a flaky socket retry) closes
         # its own stale predecessor. This can no longer happen to a

@@ -4,19 +4,53 @@ import os
 import uuid
 import jwt
 import time
-from config import JWT_SECRET, JWT_ALGO, JWT_EXP_SECONDS, FLASK_SECRET_KEY, ICE_SERVERS
+from config import JWT_SECRET, JWT_ALGO, JWT_EXP_SECONDS, FLASK_SECRET_KEY, ICE_SERVERS, IS_PRODUCTION
 import ws_server
 from database import create_record, authenticate_user, create_guest
 from database.supabase_client import get_supabase
 
 app = Flask(__name__)
 app.secret_key = FLASK_SECRET_KEY
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+    SESSION_COOKIE_SECURE=IS_PRODUCTION,
+    SOCK_SERVER_OPTIONS={
+        "ping_interval": 25,
+        "max_message_size": 262144,
+    },
+)
 
 def normalize_meeting_id(raw_id):
     if not raw_id:
         return None
     normalized = raw_id.strip().lower()
     return normalized or None
+
+
+def meeting_identity():
+    """Return the currently authorised display name, if any."""
+    username = session.get("user")
+    guest_name = session.get("guest_name")
+    guest_id = session.get("guest_id")
+    if username:
+        return username
+    if guest_id and guest_name:
+        return guest_name
+    return None
+
+
+def create_signal_token(room_id, display_name, connection_id):
+    return jwt.encode(
+        {
+            "user": display_name,
+            "room": room_id,
+            "cid": connection_id,
+            "exp": int(time.time()) + JWT_EXP_SECONDS,
+        },
+        JWT_SECRET,
+        algorithm=JWT_ALGO,
+    )
 
 
 @app.get("/room_styles.css")
@@ -302,33 +336,16 @@ def meeting_room(room_id):
     room_id = normalized_room_id
 
     # Check if user is authenticated (logged in) or registered as guest
-    username = session.get("user")
-    guest_id = session.get("guest_id")
-    guest_name = session.get("guest_name")
+    display_name = meeting_identity()
 
     # If neither logged in nor registered as guest, redirect to guest registration
-    if not username and not (guest_id and guest_name):
+    if not display_name:
         return redirect(url_for("guest_register", room_id=room_id))
-
-    # Use logged-in username or guest name
-    if username:
-        display_name = username
-    else:
-        display_name = guest_name
 
     meeting_title = session.get("meeting_title", "SnQ Meeting")
     connection_id = uuid.uuid4().hex
 
-    token = jwt.encode(
-        {
-            "user": display_name,
-            "room": room_id,
-            "cid": connection_id,
-            "exp": int(time.time()) + JWT_EXP_SECONDS
-        },
-        JWT_SECRET,
-        algorithm=JWT_ALGO
-    )
+    token = create_signal_token(room_id, display_name, connection_id)
 
     return render_template(
         "room.html",
@@ -339,6 +356,28 @@ def meeting_room(room_id):
         connection_id=connection_id,
         ice_servers_json=json.dumps(ICE_SERVERS)
     )
+
+
+@app.post("/meeting/<room_id>/signal-token")
+def refresh_signal_token(room_id):
+    """Issue a replacement WebSocket token for an already authorised attendee."""
+    normalized_room_id = normalize_meeting_id(room_id)
+    display_name = meeting_identity()
+    payload = request.get_json(silent=True) or {}
+    connection_id = payload.get("cid", "")
+
+    if not normalized_room_id or not display_name:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    try:
+        connection_id = uuid.UUID(str(connection_id)).hex
+    except (ValueError, AttributeError):
+        return jsonify({"error": "Invalid connection"}), 400
+
+    return jsonify({
+        "token": create_signal_token(normalized_room_id, display_name, connection_id),
+        "expires_in": JWT_EXP_SECONDS,
+    })
 
 
 @app.route("/logout")
