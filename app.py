@@ -36,7 +36,11 @@ def login():
             session["user_id"] = user["id"]
             return redirect(url_for("home"))
         else:
-            return "Invalid credentials", 401
+            return render_template(
+                "login.html",
+                error="Invalid username or password.",
+                show_error_popup=True,
+            ), 401
 
     return render_template("login.html")
 
@@ -132,6 +136,7 @@ def reset_password():
     except Exception as e:
         print("Password update error:", e)
         return f"Unable to reset password: {str(e)}", 500
+
 @app.route("/")
 def index():
     if "user" in session:
@@ -338,9 +343,7 @@ def meeting_room(room_id):
 
 @app.route("/logout")
 def logout():
-
     session.clear()
-
     return redirect(url_for("login"))
 
 

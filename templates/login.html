@@ -52,6 +52,12 @@
             <p class="error-message">{{ error }}</p>
         {% endif %}
 
+        {% if show_error_popup %}
+            <script>
+                window.alert({{ error|tojson }});
+            </script>
+        {% endif %}
+
         <form method="POST" action="{{ url_for('login') }}" class="login-form">
 
             <input
